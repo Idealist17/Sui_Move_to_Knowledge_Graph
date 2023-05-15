@@ -27,3 +27,4 @@ clap = { version = "4.1.11", features = ["derive"] }
 codespan = "0.11.1"
 codespan-reporting = { version = "0.11.1", features = ["serde", "serialization"] }
 anyhow = "1.0.52"
+petgraph = "0.5.1"

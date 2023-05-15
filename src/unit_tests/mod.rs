@@ -1,2 +1,3 @@
-pub mod test_for_cli;
-pub mod test_for_stackless_bytecode;
+pub mod test_cli;
+pub mod test_sbir;
+pub mod test_detect;

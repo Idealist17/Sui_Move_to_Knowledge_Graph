@@ -25,6 +25,7 @@ pub fn visit_dirs(dir: &PathBuf, paths: &mut Vec<PathBuf>) {
 }
 
 pub fn is_dep_module(module_env: &ModuleEnv) -> bool {
+    // if the module is dependent module
     let mut is_dep = false;
     let module_addr = module_env.get_full_name_str();
     for addr in DEPADDRESSES {

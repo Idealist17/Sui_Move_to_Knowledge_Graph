@@ -30,6 +30,7 @@ dependencies = [
  "move-package",
  "move-prover-test-utils",
  "move-stackless-bytecode",
+ "petgraph 0.5.1",
  "regex",
  "serde 1.0.160",
  "serde_json",
