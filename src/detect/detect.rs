@@ -3,13 +3,14 @@ use crate::move_ir::sbir_generator::{
     Function,
     MoveScanner,
 };
+use move_binary_format::internals::ModuleIndex;
 use move_stackless_bytecode::stackless_bytecode::{
     Bytecode, Operation
 };
-use move_model::{model::{FunId, QualifiedId}, symbol::Symbol};
+use move_model::{model::{FunId, QualifiedId}};
 use move_binary_format::file_format::Visibility;
 use petgraph::Direction;
-
+use move_binary_format::file_format::{Bytecode as MoveBytecode};
 
 
 pub fn detect_unchecked_return(func: &Function) -> bool {
@@ -56,7 +57,7 @@ fn get_unused_functions(ms: &MoveScanner) -> Vec<&QualifiedId<FunId>> {
         }
         // 调用边，即入边
         let neighbors = ms.call_graph.neighbors_directed(*nid, Direction::Incoming);
-        if let Some(_) = neighbors.into_iter().next() {
+        if neighbors.into_iter().next().is_none() {
             unused_funs.push(fid);
         }
     }
@@ -76,4 +77,31 @@ pub fn detect_unused_private_functions(ms: &MoveScanner) -> Vec<&QualifiedId<Fun
         }
     }
     unused_private_functions
+}
+
+pub fn detect_unused_constants(ms: &MoveScanner) {
+    for module in ms.env.module_data.iter() {
+        if is_dep_module(&(ms.env).get_module(module.id)) {
+            continue;
+        }
+        let cm = &module.module;
+        let const_pool = &cm.constant_pool;
+        let len = const_pool.len();
+        let mut used = vec![false; len];
+        for fun in cm.function_defs.iter() {
+            if let Some(codes) = &fun.code {
+                for code in codes.code.iter() {
+                    match code {
+                        MoveBytecode::LdConst(idx) => {
+                            used[idx.into_index()] = true;
+                        },
+                        _ => {},
+                    }
+                };
+            } else {
+                continue;
+            }
+        }
+        println!("{:?}", used);
+    }
 }

@@ -8,12 +8,11 @@ use petgraph::graph::{Graph, DiGraph, NodeIndex};
 use std::{
     collections::BTreeMap,
     fmt::Write,
-    io::{BufReader, Read},
     path::{Path, PathBuf},
     vec,
     fs,
 };
-use crate::utils::utils;
+use crate::utils::utils::{self, compile_module};
 
 use codespan_reporting::{diagnostic::Severity, term::termcolor::Buffer};
 use move_model::{ast::ModuleName, model::GlobalEnv, ty::Type};
@@ -46,12 +45,13 @@ pub struct Function {
 }
 
 pub struct MoveScanner {
+    // TODO 添加 module ，整体结构再考虑一下，通过 module::func 定位漏洞位置
     pub bc: Blockchain,
     pub env: GlobalEnv,
     pub targets: FunctionTargetsHolder,
     pub call_graph: Graph<QualifiedId<FunId>, ()> ,
     pub fun_map: BTreeMap<QualifiedId<FunId>, NodeIndex>,
-    pub functions: Vec<Function>,
+    pub functions: BTreeMap<QualifiedId<FunId>, Function>,
 }
 
 impl MoveScanner {
@@ -62,42 +62,41 @@ impl MoveScanner {
             targets: FunctionTargetsHolder::default(),
             call_graph: DiGraph::new(),
             fun_map: BTreeMap::new(),
-            functions: vec![],
+            functions: BTreeMap::new(),
         };
         ms.get_from_bytecode_modules(dir);
         ms.get_functions_from_globalenv();
         ms.build_call_graph();
         ms
     }
-    
+
     pub fn get_from_bytecode_modules(&mut self, dir: &str) {
         let mut all_modules: Vec<CompiledModule> = Vec::new();
         // 需要分析的 mv
         let dir = PathBuf::from(dir);
         let mut paths = Vec::new();
-        utils::visit_dirs(&dir, &mut paths);
+        utils::visit_dirs(&dir, &mut paths, false);
         // 常用的外部依赖，目前为止，默认全部加在进去，后续再做优化
         let dep_dir = match self.bc {
             Blockchain::Aptos => PathBuf::from(APTOSDEPENDENCYDIR),
             Blockchain::Sui => PathBuf::from(SUIDEPENDENCYDIR),
         };
-        utils::visit_dirs(&dep_dir, &mut paths);
+        utils::visit_dirs(&dep_dir, &mut paths, true);
     
         for filename in paths {
-            let f = fs::File::open(filename).unwrap();
-            let mut reader = BufReader::new(f);
-            let mut buffer = Vec::new();
-            reader.read_to_end(&mut buffer).unwrap();
-    
-            let cm = CompiledModule::deserialize(&buffer).unwrap();
+            let cm = compile_module(filename);
             all_modules.push(cm);
         }
+
+        // for md in &all_modules {
+        //     println!("{}", md.self_id());
+        // }
+
+        // let all_modules = Modules::new(&all_modules);
+        // let dep_graph = all_modules.compute_dependency_graph();
+        // let modules = dep_graph.compute_topological_order().unwrap();
     
-        let all_modules = Modules::new(&all_modules);
-        let dep_graph = all_modules.compute_dependency_graph();
-        let modules = dep_graph.compute_topological_order().unwrap();
-    
-        let env = run_bytecode_model_builder(modules).unwrap();
+        let env = run_bytecode_model_builder(&all_modules).unwrap();
         let mut targets = FunctionTargetsHolder::default();
         if env.has_errors() {
             let mut error_writer = Buffer::no_color();
@@ -135,71 +134,67 @@ impl MoveScanner {
     }
     
     pub fn get_functions_from_globalenv(&mut self) {
-        let mut funtcionts = vec![];
-        for module_env in self.env.get_modules() {
-            if utils::is_dep_module(&module_env) {
-                continue;
-            }
-            for func_env in module_env.get_functions() {
-                let target = self.targets.get_target(&func_env, &FunctionVariant::Baseline);
-    
-                // func_env.is_native_or_intrinsic() ...
-                let is_entry = func_env.is_entry();
-                let visibility = func_env.visibility();
-                let module_name = func_env.module_env.get_name().clone();
-                let func_name = func_env.get_name();
-                // 范型参数数量
-                let tparams_count_all = func_env.get_type_parameter_count();
-                let tparams_count_defined = func_env.get_type_parameter_count();
-                // 参数及类型
-                let mut params: Vec<Type> = vec![];
-                let params_count = func_env.get_parameter_count();
-                for idx in 0..params_count {
-                    let ty = func_env.get_local_type(idx);
-                    params.push(ty);
-                    let local_name = if target.has_local_user_name(idx) {
-                        Some(target.get_local_name(idx))
-                    } else {
-                        None
-                    };
-                }
-                // 返回值类型
-                let mut rets = vec![];
-                let return_count = func_env.get_return_count();
-                for idx in 0..return_count {
-                    let return_type = target.get_return_type(idx).clone();
-                    rets.push(return_type);
-                }
-                // 所有左值类型
-                let local_count = func_env.get_local_count();
-                for idx in params_count..local_count {
-                    let ty = func_env.get_local_type(idx);
-                    let local_name = if target.has_local_user_name(idx) {
-                        Some(target.get_local_name(idx))
-                    } else {
-                        None
-                    };
-                }
-    
-                let bytecodes = target.get_bytecode();
-                // let label_offsets = Bytecode::label_offsets(bytecodes);
-                // for (offset, code) in bytecodes.iter().enumerate() {
-                //     println!(
-                //         "{}",
-                //         format!("{:>3}: {}", offset, code.display(&target, &label_offsets))
-                //     );
-                // }
-                let function = Function {
-                    name: func_name,
-                    module_name,
-                    visibility,
-                    is_entry,
-                    params,
-                    rets,
-                    bytecodes: bytecodes.to_vec(),
+        let mut funtcionts = BTreeMap::new();
+        for qid in self.targets.get_funs() {
+            let func_env: move_model::model::FunctionEnv = self.env.get_function_qid(qid);
+            let target = self.targets.get_target(&func_env, &FunctionVariant::Baseline);
+
+            // func_env.is_native_or_intrinsic() ...
+            let is_entry = func_env.is_entry();
+            let visibility = func_env.visibility();
+            let module_name = func_env.module_env.get_name().clone();
+            let func_name = func_env.get_name();
+            // 范型参数数量
+            let tparams_count_all = func_env.get_type_parameter_count();
+            let tparams_count_defined = func_env.get_type_parameter_count();
+            // 参数及类型
+            let mut params: Vec<Type> = vec![];
+            let params_count = func_env.get_parameter_count();
+            for idx in 0..params_count {
+                let ty = func_env.get_local_type(idx);
+                params.push(ty);
+                let local_name = if target.has_local_user_name(idx) {
+                    Some(target.get_local_name(idx))
+                } else {
+                    None
                 };
-                funtcionts.push(function);
             }
+            // 返回值类型
+            let mut rets = vec![];
+            let return_count = func_env.get_return_count();
+            for idx in 0..return_count {
+                let return_type = target.get_return_type(idx).clone();
+                rets.push(return_type);
+            }
+            // 所有左值类型
+            let local_count = func_env.get_local_count();
+            for idx in params_count..local_count {
+                let ty = func_env.get_local_type(idx);
+                let local_name = if target.has_local_user_name(idx) {
+                    Some(target.get_local_name(idx))
+                } else {
+                    None
+                };
+            }
+
+            let bytecodes = target.get_bytecode();
+            let label_offsets = Bytecode::label_offsets(bytecodes);
+            // for (offset, code) in bytecodes.iter().enumerate() {
+            //     println!(
+            //         "{}",
+            //         format!("{:>3}: {}", offset, code.display(&target, &label_offsets))
+            //     );
+            // }
+            let function = Function {
+                name: func_name,
+                module_name,
+                visibility,
+                is_entry,
+                params,
+                rets,
+                bytecodes: bytecodes.to_vec(),
+            };
+            funtcionts.insert(qid, function);
         }
         self.functions =  funtcionts;
     }
@@ -225,24 +220,18 @@ impl MoveScanner {
         self.fun_map = nodes;
     }
     
-    pub fn get_cfg(&self) {
-        // TODO 修改，输入 funId 指定 cfg 的构建
-        for module_env in self.env.get_modules() {
-            if utils::is_dep_module(&module_env) {
-                continue;
-            }
-            for func_env in module_env.get_functions() {
-                let generator = StacklessBytecodeGenerator::new(&func_env);
-                let data = generator.generate_function();
-                let func_target = FunctionTarget::new(&func_env, &data);
-                // 到这里为止 只要能拿到 bytecode 即可继续进行分析
-                let code = func_target.get_bytecode();
-                let cfg = StacklessControlFlowGraph::new_forward(code);
-                // CFG.dot
-                let dot_graph = generate_cfg_in_dot_format(&func_target);
-                std::fs::write(&"cfg.dot", &dot_graph).expect("generating dot file for CFG");
-            }
-        }
+    pub fn get_cfg(&self, qid: &QualifiedId<FunId>, dot_filename: Option<PathBuf>) -> StacklessControlFlowGraph {
+        // generate cfg for function, and display dot file
+        let function = self.functions.get(&qid.clone()).unwrap();
+        let codes = &function.bytecodes;
+        if let Some(filename) = dot_filename {
+            let func_env = self.env.get_function_qid(*qid);
+            let func_target = self.targets.get_target(&func_env, &FunctionVariant::Baseline);
+            let dot_graph = generate_cfg_in_dot_format(&func_target);
+            fs::write(&filename, &dot_graph).expect("generating dot file for CFG");
+        };
+        let cfg = StacklessControlFlowGraph::new_forward(codes.as_slice());
+        cfg
     }
 
     pub fn print_targets_for_test(&self) -> String {
@@ -254,7 +243,7 @@ impl MoveScanner {
             for func_env in module_env.get_functions() {
                 for (variant, target) in self.targets.get_targets(&func_env) {
                     if !target.data.code.is_empty() || target.func_env.is_native_or_intrinsic() {
-                        target.register_annotation_formatters_for_test();
+                        // target.register_annotation_formatters_for_test();
                         writeln!(&mut text, "\n[variant {}]\n{}", variant, target).unwrap();
                     }
                 }

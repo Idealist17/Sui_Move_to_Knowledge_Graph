@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::{collections::{BTreeMap, BTreeSet}, vec};
 use itertools::Itertools;
 use move_stackless_bytecode::{
     stackless_bytecode::{
@@ -59,7 +59,7 @@ pub fn addr_to_big_uint(addr: &AccountAddress) -> BigUint {
 
 pub struct StacklessBytecodeGenerator<'a> {
     pub module: &'a CompiledModule,
-    pub module_data: &'a  ModuleData,
+    pub module_data: ModuleData,
     pub func_define: &'a FunctionDefinition,
     pub temp_count: usize,
     pub temp_stack: Vec<usize>,
@@ -75,13 +75,10 @@ pub struct StacklessBytecodeGenerator<'a> {
 }
 
 impl<'a> StacklessBytecodeGenerator<'a> {
-    pub fn new(mut self, cm: &CompiledModule) -> Self {
-        // let local_types = (0..func_env.get_local_count())
-        //     .map(|i| func_env.get_local_type(i))
-        //     .collect_vec();
+    pub fn new(cm: &'a CompiledModule, func_define: &'a FunctionDefinition) -> Self {
         let id = cm.self_id();
         let addr = addr_to_big_uint(id.address());
-        let mut symbol_pool = SymbolPool::new();
+        let symbol_pool = SymbolPool::new();
         let module_name = ModuleName::new(addr, symbol_pool.make(id.name().as_str()));
         let module_id = ModuleId::new(0);
         let mut module_data = ModuleData::stub(module_name.clone(), module_id, cm.clone());
@@ -103,18 +100,18 @@ impl<'a> StacklessBytecodeGenerator<'a> {
             let name = cm.identifier_at(cm.struct_handle_at(def.struct_handle).name);
             let symbol = symbol_pool.make(name.as_str());
             let struct_id = StructId::new(symbol);
-            let data = self.create_move_struct_data(cm, def_idx, symbol, Loc::default(), Vec::default());
+            let data = create_move_struct_data(&symbol_pool, cm, def_idx, symbol, Loc::default(), Vec::default());
             module_data.struct_data.insert(struct_id, data);
             module_data.struct_idx_to_id.insert(def_idx, struct_id);
         }
-
+        
         StacklessBytecodeGenerator {
             module: cm,
-            module_data: &module_data,
-            func_define: todo!(),
-            temp_count: todo!(),
+            module_data: module_data,
+            func_define: func_define,
+            temp_count: 0,
             temp_stack: vec![],
-            local_types: todo!(),
+            local_types: vec![],
             code: vec![],
             location_table: BTreeMap::new(),
             loop_invariants: BTreeSet::new(),
@@ -125,49 +122,58 @@ impl<'a> StacklessBytecodeGenerator<'a> {
         }
     }
 
-    pub fn generate_function(mut self) {
-        for fd in &self.module.function_defs {
-            let original_code = match &fd.code {
-                Some(code) => code.code.as_slice(),
-                None => &[],
+    pub fn generate_function(&mut self) {
+        let f = FunctionDefinitionView::new(self.module, self.func_define);
+        let local_count = match f.locals_signature() {
+            Some(locals_view) => locals_view.len(),
+            None => f.parameters().len(),
+        };
+        let local_types = (0..local_count)
+            .map(|i| self.get_local_type(&f, i))
+            .collect_vec();
+        self.temp_count = local_types.len();
+        self.local_types = local_types;
+
+        let original_code = match &self.func_define.code {
+            Some(code) => code.code.as_slice(),
+            None => &[],
+        };
+        let mut label_map = BTreeMap::new();
+        for (pos, bytecode) in original_code.iter().enumerate() {
+            if let MoveBytecode::BrTrue(code_offset)
+            | MoveBytecode::BrFalse(code_offset)
+            | MoveBytecode::Branch(code_offset) = bytecode
+            {
+                let offs = *code_offset as CodeOffset;
+                if label_map.get(&offs).is_none() {
+                    let label = Label::new(label_map.len());
+                    label_map.insert(offs, label);
+                }
+            }
+            if let MoveBytecode::BrTrue(_) | MoveBytecode::BrFalse(_) = bytecode {
+                let next_offs = (pos + 1) as CodeOffset;
+                if label_map.get(&next_offs).is_none() {
+                    let fall_through_label = Label::new(label_map.len());
+                    label_map.insert(next_offs, fall_through_label);
+                    self.fallthrough_labels.insert(fall_through_label);
+                }
             };
-            let mut label_map = BTreeMap::new();
-            for (pos, bytecode) in original_code.iter().enumerate() {
-                if let MoveBytecode::BrTrue(code_offset)
-                | MoveBytecode::BrFalse(code_offset)
-                | MoveBytecode::Branch(code_offset) = bytecode
-                {
-                    let offs = *code_offset as CodeOffset;
-                    if label_map.get(&offs).is_none() {
-                        let label = Label::new(label_map.len());
-                        label_map.insert(offs, label);
-                    }
-                }
-                if let MoveBytecode::BrTrue(_) | MoveBytecode::BrFalse(_) = bytecode {
-                    let next_offs = (pos + 1) as CodeOffset;
-                    if label_map.get(&next_offs).is_none() {
-                        let fall_through_label = Label::new(label_map.len());
-                        label_map.insert(next_offs, fall_through_label);
-                        self.fallthrough_labels.insert(fall_through_label);
-                    }
-                };
-            }
+        }
 
-            // Generate bytecode.
-            for (code_offset, bytecode) in original_code.iter().enumerate() {
-                self.generate_bytecode(bytecode, code_offset as CodeOffset, &label_map);
-            }
+        // Generate bytecode.
+        for (code_offset, bytecode) in original_code.iter().enumerate() {
+            self.generate_bytecode(bytecode, code_offset as CodeOffset, &label_map);
+        }
 
-            // Eliminate fall-through for non-branching instructions
-            let code = std::mem::take(&mut self.code);
-            for bytecode in code.into_iter() {
-                if let Bytecode::Label(attr_id, label) = bytecode {
-                    if !self.code.is_empty() && !self.code[self.code.len() - 1].is_branch() {
-                        self.code.push(Bytecode::Jump(attr_id, label));
-                    }
+        // Eliminate fall-through for non-branching instructions
+        let code = std::mem::take(&mut self.code);
+        for bytecode in code.into_iter() {
+            if let Bytecode::Label(attr_id, label) = bytecode {
+                if !self.code.is_empty() && !self.code[self.code.len() - 1].is_branch() {
+                    self.code.push(Bytecode::Jump(attr_id, label));
                 }
-                self.code.push(bytecode);
             }
+            self.code.push(bytecode);
         }
     }
 
@@ -483,7 +489,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
             MoveBytecode::LdConst(idx) => {
                 let temp_index = self.temp_count;
                 self.temp_stack.push(temp_index);
-                let constant = self.module.constant_pool()[idx.0 as usize];
+                let constant = &self.module.constant_pool()[idx.0 as usize];
                 let ty = self.globalize_signature(&constant.type_);
                 let value = Self::translate_value(
                     &ty,
@@ -638,7 +644,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
                 // let struct_env = self.func_env.module_env.get_struct_by_def_idx(*idx); // struct 的 modlue、id、fields
                 let mut field_temp_indices = vec![];
                 let struct_temp_index = self.temp_count;
-                let struct_env = self.module_data.struct_data[&self.module_data.struct_idx_to_id[idx]];
+                // let struct_data = &self.module_data.struct_data[&self.module_data.struct_idx_to_id[idx]];
                 
                 let struct_def = view.struct_def_at(*idx).unwrap();
                 for _ in 0..struct_def.declared_field_count().unwrap() {
@@ -668,7 +674,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
             }
 
             MoveBytecode::PackGeneric(idx) => {
-                let struct_instantiation = self.module.struct_def_instantiations[idx.into_index()];
+                let struct_instantiation = &self.module.struct_def_instantiations[idx.into_index()];
                 let actuals = self.get_type_params(struct_instantiation.type_parameters);
                 // let struct_env = self.func_env.module_env.get_struct_by_def_idx(struct_instantiation.def);
                 let mut field_temp_indices = vec![];
@@ -706,7 +712,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
                 let struct_def  = self.module.struct_def_at(*idx);
                 let name = self.module.identifier_at(self.module.struct_handle_at(struct_def.struct_handle).name);
                 let symbol = self.symbol_pool.make(name.as_str());
-                let struct_data = self.create_move_struct_data(self.module, *idx, symbol, Loc::default(), Vec::default(),);
+                let struct_data = create_move_struct_data(&self.symbol_pool, self.module, *idx, symbol, Loc::default(), Vec::default(),);
                 let mut field_temp_indices = vec![];
                 let struct_temp_index = self.temp_stack.pop().unwrap();
                 for field_data in struct_data.field_data.values().sorted_by_key(|data| data.offset) {
@@ -728,7 +734,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
             }
 
             MoveBytecode::UnpackGeneric(idx) => {
-                let struct_instantiation = self.module.struct_def_instantiations[idx.into_index()];
+                let struct_instantiation = &self.module.struct_def_instantiations[idx.into_index()];
                 let actuals = self.get_type_params(struct_instantiation.type_parameters);
                 let struct_id = self.module_data.struct_idx_to_id[&struct_instantiation.def];
                 let mut field_temp_indices = vec![];
@@ -740,7 +746,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
 
                 let name = self.module.identifier_at(self.module.struct_handle_at(struct_def.struct_handle).name);
                 let symbol = self.symbol_pool.make(name.as_str());
-                let struct_data = self.create_move_struct_data(self.module, struct_def_id, symbol, Loc::default(), Vec::default(),);
+                let struct_data = create_move_struct_data(&self.symbol_pool, self.module, struct_def_id, symbol, Loc::default(), Vec::default(),);
                 for field_data in struct_data.field_data.values().sorted_by_key(|data| data.offset) {
                     let field_type = self.get_type(field_data).instantiate(&actuals);
                     let field_temp_index = self.temp_count;
@@ -1014,7 +1020,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
             }
 
             MoveBytecode::ExistsGeneric(idx) => {
-                let struct_instantiation = self.module.struct_def_instantiations[idx.into_index()];
+                let struct_instantiation = &self.module.struct_def_instantiations[idx.into_index()];
                 let operand_index = self.temp_stack.pop().unwrap();
                 let temp_index = self.temp_count;
                 self.local_types.push(Type::Primitive(PrimitiveType::Bool));
@@ -1063,7 +1069,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
 
             MoveBytecode::MutBorrowGlobalGeneric(idx)
             | MoveBytecode::ImmBorrowGlobalGeneric(idx) => {
-                let struct_instantiation = self.module.struct_def_instantiations[idx.into_index()];
+                let struct_instantiation = &self.module.struct_def_instantiations[idx.into_index()];
                 let struct_def = self.module.struct_def_at(struct_instantiation.def);
                 let is_mut = matches!(bytecode, MoveBytecode::MutBorrowGlobalGeneric(..));
                 let operand_index = self.temp_stack.pop().unwrap();
@@ -1115,7 +1121,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
             }
 
             MoveBytecode::MoveFromGeneric(idx) => {
-                let struct_instantiation = self.module.struct_def_instantiations[idx.into_index()];
+                let struct_instantiation = &self.module.struct_def_instantiations[idx.into_index()];
                 let struct_def = self.module.struct_def_at(struct_instantiation.def);
                 let operand_index = self.temp_stack.pop().unwrap();
                 let temp_index = self.temp_count;
@@ -1157,7 +1163,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
             }
 
             MoveBytecode::MoveToGeneric(idx) => {
-                let struct_instantiation = self.module.struct_def_instantiations[idx.into_index()];
+                let struct_instantiation = &self.module.struct_def_instantiations[idx.into_index()];
                 let struct_def = self.module.struct_def_at(struct_instantiation.def);
                 let value_operand_index = self.temp_stack.pop().unwrap();
                 let signer_operand_index = self.temp_stack.pop().unwrap();
@@ -1337,20 +1343,21 @@ impl<'a> StacklessBytecodeGenerator<'a> {
 
     /// Create a new attribute id and populate location table.
     fn new_loc_attr(&mut self, code_offset: CodeOffset) -> AttrId {
-        let loc = self.func_env.get_bytecode_loc(code_offset);
+        // // let loc = self.func_env.get_bytecode_loc(code_offset);
+        // if let Ok(fmap) = self.module_data.source_map
+        //     .get_function_source_map(self.func_define)
+        // {
+        //     if let Some(loc) = fmap.get_code_location(code_offset) {
+        //         return self.module_env.env.to_loc(&loc);
+        //     }
+        // }
+        // self.get_loc()
 
-        if let Ok(fmap) = self.module_data.source_map
-            .get_function_source_map(self.func_define.function)
-        {
-            if let Some(loc) = fmap.get_code_location(offset) {
-                return self.module_env.env.to_loc(&loc);
-            }
-        }
-        self.get_loc()
-
-        let attr = AttrId::new(self.location_table.len());
-        self.location_table.insert(attr, loc);
-        attr
+        // let attr = AttrId::new(self.location_table.len());
+        // self.location_table.insert(attr, loc);
+        // attr
+        // TODO
+        AttrId::new(1)
     }
 
     fn get_field_info(&self, field_handle_index: FieldHandleIndex) -> (StructId, usize, Type) {
@@ -1360,10 +1367,10 @@ impl<'a> StacklessBytecodeGenerator<'a> {
         // let struct_env = self.func_env.module_env.get_struct(struct_id);
         let name = self.module.identifier_at(self.module.struct_handle_at(struct_def.struct_handle).name);
         let symbol = self.symbol_pool.make(name.as_str());
-        let struct_data = self.create_move_struct_data(self.module, field_handle.owner, symbol, Loc::default(),  Vec::default(),);
+        let struct_data = create_move_struct_data(&self.symbol_pool, self.module, field_handle.owner, symbol, Loc::default(),  Vec::default(),);
         // let field_env = struct_env.get_field_by_offset(field_handle.field as usize);
         let offset = field_handle.field as usize;
-        let mut filed_data;
+        let mut filed_data =  struct_data.field_data.first_key_value().unwrap().1;
         for data in struct_data.field_data.values() {
             if data.offset == offset {
                 filed_data = data;
@@ -1419,7 +1426,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
     }
 
     fn get_type_params(&self, type_params_index: SignatureIndex) -> Vec<Type> {
-        let actuals = self.module.signature_at(type_params_index).0;
+        let actuals = &self.module.signature_at(type_params_index).0;
         self.globalize_signatures(&actuals)
     }
     
@@ -1482,44 +1489,6 @@ impl<'a> StacklessBytecodeGenerator<'a> {
         }
     }
 
-    pub fn create_move_struct_data(
-        &self,
-        module: &CompiledModule,
-        def_idx: StructDefinitionIndex,
-        name: Symbol,
-        loc: Loc,
-        attributes: Vec<Attribute>,
-    ) -> StructData {
-        let handle_idx = module.struct_def_at(def_idx).struct_handle;
-        let field_data = if let StructFieldInformation::Declared(fields) =
-            &module.struct_def_at(def_idx).field_information
-        {
-            let mut map = BTreeMap::new();
-            for (offset, field) in fields.iter().enumerate() {
-                let name = self
-                    .symbol_pool
-                    .make(module.identifier_at(field.name).as_str());
-                let info = FieldInfo::Declared { def_idx };
-                map.insert(FieldId::new(name), FieldData { name, offset, info });
-            }
-            map
-        } else {
-            BTreeMap::new()
-        };
-        let info = StructInfo::Declared {
-            def_idx,
-            handle_idx,
-        };
-        StructData {
-            name,
-            loc,
-            attributes,
-            info,
-            field_data,
-            spec: Spec::default(),
-        }
-    }
-
     fn get_fun_id_by_idx(&self, idx: &FunctionHandleIndex) -> FunId {
         let h = self.module.function_handle_at(*idx);
         let name = self.module.identifier_at(h.name);
@@ -1537,9 +1506,9 @@ impl<'a> StacklessBytecodeGenerator<'a> {
     }
 
     fn get_type(&self, data: &FieldData) -> Type {
-        match data.info {
+        match &data.info {
             FieldInfo::Declared { def_idx } => {
-                let struct_def = self.module.struct_def_at(def_idx);
+                let struct_def = self.module.struct_def_at(*def_idx);
                 let field = match &struct_def.field_information {
                     StructFieldInformation::Declared(fields) => &fields[data.offset],
                     StructFieldInformation::Native => unreachable!(),
@@ -1548,5 +1517,41 @@ impl<'a> StacklessBytecodeGenerator<'a> {
             }
             FieldInfo::Generated { type_ } => type_.clone(),
         }
+    }
+}
+
+pub fn create_move_struct_data(
+    symbol_pool: &SymbolPool,
+    module: &CompiledModule,
+    def_idx: StructDefinitionIndex,
+    name: Symbol,
+    loc: Loc,
+    attributes: Vec<Attribute>,
+) -> StructData {
+    let handle_idx = module.struct_def_at(def_idx).struct_handle;
+    let field_data = if let StructFieldInformation::Declared(fields) =
+        &module.struct_def_at(def_idx).field_information
+    {
+        let mut map = BTreeMap::new();
+        for (offset, field) in fields.iter().enumerate() {
+            let name = symbol_pool.make(module.identifier_at(field.name).as_str());
+            let info = FieldInfo::Declared { def_idx };
+            map.insert(FieldId::new(name), FieldData { name, offset, info });
+        }
+        map
+    } else {
+        BTreeMap::new()
+    };
+    let info = StructInfo::Declared {
+        def_idx,
+        handle_idx,
+    };
+    StructData {
+        name,
+        loc,
+        attributes,
+        info,
+        field_data,
+        spec: Spec::default(),
     }
 }

@@ -12,15 +12,15 @@ fn test_source2stackless_ir() {
 #[test]
 fn test_get_from_bytecode_modules() {
     let dir = "./testdata/examples_mv/aptos/";
+    let dir = "/Users/lteng/Movebit/detect/build/movebit/bytecode_modules";
     let bc = Blockchain::Aptos;
     let ms = MoveScanner::new(dir, bc);
 
     let mut text = String::new();
     text += &ms.print_targets_for_test();
     println!("{}", text);
-    
-    // use std::io::Write;
-    // let mut file = std::fs::File::create("data1.txt").expect("create failed");
-    // file.write_all(text.as_bytes()).expect("write failed");
-    // println!("data written to file" );
+
+    use std::io::Write;
+    let mut file = std::fs::File::create("data.txt").expect("create failed");
+    file.write_all(text.as_bytes()).expect("write failed");
 }

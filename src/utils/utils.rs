@@ -1,22 +1,23 @@
-// 
-use std::path::PathBuf;
-use std::fs;
+use std::{fs, path::PathBuf, io::{BufReader, Read}};
 
+use move_binary_format::CompiledModule;
 use move_model::model::ModuleEnv;
 
 
 // 依赖的 module 的 address
-const DEPADDRESSES: [&str; 2] = ["0x1", "0x3"];
+const DEPADDRESSES: [&str; 2] = ["0x1::", "0x3::"];
 
 
 // get all .mv files in dir and subdir
-pub fn visit_dirs(dir: &PathBuf, paths: &mut Vec<PathBuf>) {
+pub fn visit_dirs(dir: &PathBuf, paths: &mut Vec<PathBuf>, subdir: bool) {
     if dir.is_dir() {
         for entry in fs::read_dir(dir).unwrap() {
             let entry = entry.unwrap();
             let path = entry.path();
             if path.is_dir() {
-                visit_dirs(&path, paths);
+                if subdir {
+                    visit_dirs(&path, paths, subdir);
+                }
             } else {
                 paths.push(path);
             }
@@ -36,6 +37,16 @@ pub fn is_dep_module(module_env: &ModuleEnv) -> bool {
     }
     return is_dep
 }
+
+pub fn compile_module(filename: PathBuf) -> CompiledModule {
+    let f = fs::File::open(filename).unwrap();
+    let mut reader = BufReader::new(f);
+    let mut buffer = Vec::new();
+    reader.read_to_end(&mut buffer).unwrap();
+    let cm = CompiledModule::deserialize(&buffer).unwrap();
+    cm
+}
+
 
 use anyhow::anyhow;
 use move_stackless_bytecode::{
@@ -58,4 +69,43 @@ pub fn get_tested_transformation_pipeline(
             dir_name
         )),
     }
+}
+
+pub fn format_vec_u8(vec: &[u8]) -> String {
+    let mut res = "".to_string();
+    let n = vec.len();
+    match n {
+        8 => { // U64
+            let mut num: u64 = 0;
+            let mut base: u64 = 1;
+            for (i, v) in vec.iter().enumerate() {
+                if i != 0 {
+                    base = base << 8;
+                }
+                num = num + u64::from(*v) * base;
+
+            }
+            res = num.to_string();
+        },
+        16 => { // U128 or Address
+            let mut num: u128 = 0;
+            let mut base: u128 = 1;
+            for (i, v) in vec.iter().enumerate() {
+                if i != 0 {
+                    base = base << 8;
+                }
+                num = num + u128::from(*v) * base;
+            }
+            let hex_string = hex::encode(vec);
+            res = hex_string + "/";
+            res = res + num.to_string().as_str();
+        },
+        _ => {
+            for v in vec.iter() {
+                let ch = std::char::from_u32(*v as u32).expect("Invalid ASCII value");
+                res.push(ch);
+            }
+        }
+    }
+    res
 }
