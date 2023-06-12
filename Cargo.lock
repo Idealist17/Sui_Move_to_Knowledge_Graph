@@ -328,7 +328,7 @@ checksum = "c3ac9f8b63eca6fd385229b3675f6cc0dc5c8a5c8a54a59d4f52ffd670d87b0c"
 [[package]]
 name = "bytecode-interpreter-crypto"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "curve25519-dalek-fiat",
@@ -1540,9 +1540,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.18"
+version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "518ef76f2f87365916b142844c16d8fefd85039bc5699050210a7778ee1cd1de"
+checksum = "b06a4cde4c0f271a446782e3eff8de789548ce57dbc8eca9292c27f4a42004b4"
 dependencies = [
  "serde 1.0.164",
 ]
@@ -1604,7 +1604,7 @@ dependencies = [
 [[package]]
 name = "move-abigen"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "bcs",
@@ -1621,7 +1621,7 @@ dependencies = [
 [[package]]
 name = "move-binary-format"
 version = "0.0.3"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "move-core-types",
@@ -1634,12 +1634,12 @@ dependencies = [
 [[package]]
 name = "move-borrow-graph"
 version = "0.0.1"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 
 [[package]]
 name = "move-bytecode-source-map"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "bcs",
@@ -1654,7 +1654,7 @@ dependencies = [
 [[package]]
 name = "move-bytecode-utils"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "move-binary-format",
@@ -1666,7 +1666,7 @@ dependencies = [
 [[package]]
 name = "move-bytecode-verifier"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "fail",
@@ -1679,7 +1679,7 @@ dependencies = [
 [[package]]
 name = "move-bytecode-viewer"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -1696,7 +1696,7 @@ dependencies = [
 [[package]]
 name = "move-cli"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "bcs",
@@ -1742,7 +1742,7 @@ dependencies = [
 [[package]]
 name = "move-command-line-common"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "difference",
@@ -1759,7 +1759,7 @@ dependencies = [
 [[package]]
 name = "move-compiler"
 version = "0.0.1"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "bcs",
@@ -1788,7 +1788,7 @@ dependencies = [
 [[package]]
 name = "move-core-types"
 version = "0.0.4"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "bcs",
@@ -1807,7 +1807,7 @@ dependencies = [
 [[package]]
 name = "move-coverage"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "bcs",
@@ -1827,7 +1827,7 @@ dependencies = [
 [[package]]
 name = "move-disassembler"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -1845,7 +1845,7 @@ dependencies = [
 [[package]]
 name = "move-docgen"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "codespan",
@@ -1863,7 +1863,7 @@ dependencies = [
 [[package]]
 name = "move-errmapgen"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "bcs",
@@ -1877,7 +1877,7 @@ dependencies = [
 [[package]]
 name = "move-ir-to-bytecode"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "codespan-reporting",
@@ -1896,7 +1896,7 @@ dependencies = [
 [[package]]
 name = "move-ir-to-bytecode-syntax"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "hex",
@@ -1909,7 +1909,7 @@ dependencies = [
 [[package]]
 name = "move-ir-types"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "hex",
@@ -1923,7 +1923,7 @@ dependencies = [
 [[package]]
 name = "move-model"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "codespan",
@@ -1949,7 +1949,7 @@ dependencies = [
 [[package]]
 name = "move-package"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "bcs",
@@ -1985,7 +1985,7 @@ dependencies = [
 [[package]]
 name = "move-prover"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2022,7 +2022,7 @@ dependencies = [
 [[package]]
 name = "move-prover-boogie-backend"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2051,7 +2051,7 @@ dependencies = [
 [[package]]
 name = "move-prover-test-utils"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "move-command-line-common",
@@ -2062,7 +2062,7 @@ dependencies = [
 [[package]]
 name = "move-read-write-set-types"
 version = "0.0.3"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "move-binary-format",
@@ -2073,7 +2073,7 @@ dependencies = [
 [[package]]
 name = "move-resource-viewer"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "bcs",
@@ -2088,7 +2088,7 @@ dependencies = [
 [[package]]
 name = "move-stackless-bytecode"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "codespan",
  "codespan-reporting",
@@ -2115,7 +2115,7 @@ dependencies = [
 [[package]]
 name = "move-stackless-bytecode-interpreter"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "bytecode-interpreter-crypto",
@@ -2133,7 +2133,7 @@ dependencies = [
 [[package]]
 name = "move-stdlib"
 version = "0.1.1"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "hex",
@@ -2156,7 +2156,7 @@ dependencies = [
 [[package]]
 name = "move-symbol-pool"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "once_cell",
  "serde 1.0.164",
@@ -2165,7 +2165,7 @@ dependencies = [
 [[package]]
 name = "move-table-extension"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "bcs",
@@ -2182,7 +2182,7 @@ dependencies = [
 [[package]]
 name = "move-unit-test"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "better_any",
@@ -2213,7 +2213,7 @@ dependencies = [
 [[package]]
 name = "move-vm-runtime"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "better_any",
  "fail",
@@ -2230,7 +2230,7 @@ dependencies = [
 [[package]]
 name = "move-vm-test-utils"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "move-binary-format",
@@ -2243,7 +2243,7 @@ dependencies = [
 [[package]]
 name = "move-vm-types"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "bcs",
  "move-binary-format",
@@ -2467,9 +2467,9 @@ dependencies = [
 
 [[package]]
 name = "os_str_bytes"
-version = "6.5.0"
+version = "6.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ceedf44fb00f2d1984b0bc98102627ce622e083e49a5bacdb3e514fa4238e267"
+checksum = "4d5d9eb14b174ee9aa2ef96dc2b94637a2d4b6e7cb873c7e171f0c20c6cf3eac"
 
 [[package]]
 name = "ouroboros"
@@ -2960,7 +2960,7 @@ dependencies = [
 [[package]]
 name = "read-write-set"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "move-binary-format",
@@ -2975,7 +2975,7 @@ dependencies = [
 [[package]]
 name = "read-write-set-dynamic"
 version = "0.1.0"
-source = "git+https://github.com/uestc-sec/move#68784c604f7effcfeca376053557d9205aa807f8"
+source = "git+https://github.com/uestc-sec/move#385b0e6cd3f19cda4749e097e713c8e79ea49074"
 dependencies = [
  "anyhow",
  "move-binary-format",
@@ -3130,9 +3130,9 @@ checksum = "3e75f6a532d0fd9f7f13144f392b6ad56a32696bfcd9c78f797f16bbb6f072d6"
 
 [[package]]
 name = "rustix"
-version = "0.37.19"
+version = "0.37.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acf8729d8542766f1b2cf77eb034d52f40d375bb8b615d0b147089946e16613d"
+checksum = "b96e891d04aa506a6d1f318d2771bcb1c7dfda84e126660ace067c9b474bb2c0"
 dependencies = [
  "bitflags",
  "errno",

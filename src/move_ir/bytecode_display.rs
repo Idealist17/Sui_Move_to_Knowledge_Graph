@@ -2,7 +2,7 @@
 // Formatting
 use core::fmt;
 use std::{collections::BTreeMap, fmt::Formatter};
-use move_binary_format::file_format::CodeOffset;
+use move_binary_format::{file_format::CodeOffset, binary_views::FunctionView, views::FunctionDefinitionView};
 use move_model::{ast::TempIndex, ty::{Type, TypeDisplayContext}, model::{ModuleId, StructId}};
 
 use move_stackless_bytecode::{
@@ -12,6 +12,8 @@ use move_stackless_bytecode::{
         Constant, Label, Operation, PropKind, AbortAction, HavocKind, BorrowNode, BorrowEdge,
     }
 };
+
+use crate::utils::*;
 
 use super::generate_bytecode::StacklessBytecodeGenerator;
 
@@ -405,32 +407,30 @@ impl<'env> fmt::Display for OperationDisplay<'env> {
 impl<'env> OperationDisplay<'env> {
     fn fmt_type_args(&self, f: &mut Formatter<'_>, targs: &[Type]) -> fmt::Result {
         if !targs.is_empty() {
-            // TODO
-            // let tctx = TypeDisplayContext::WithEnv {
-            //     env: self.func_target.global_env(),
-            //     type_param_names: None,
-            // };
-            // write!(f, "<")?;
-            // for (i, ty) in targs.iter().enumerate() {
-            //     if i > 0 {
-            //         write!(f, ", ")?;
-            //     }
-            //     write!(f, "{}", ty.display(&tctx))?;
-            // }
-            // write!(f, ">")?;
+            let tctx = TypeDisplayContext::WithoutEnv { 
+                symbol_pool: &self.stbgr.symbol_pool, 
+                reverse_struct_table: &self.stbgr.reverse_struct_table 
+            };
+            write!(f, "<")?;
+            for (i, ty) in targs.iter().enumerate() {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", ty.display(&tctx))?;
+            }
+            write!(f, ">")?;
+            write!(f, "fmt_type_args")?;
         }
         Ok(())
     }
 
     fn struct_str(&self, mid: ModuleId, sid: StructId, targs: &[Type]) -> String {
-        // TODO
-        // let ty = Type::Struct(mid, sid, targs.to_vec());
-        // let tctx = TypeDisplayContext::WithEnv {
-        //     env: self.func_target.global_env(),
-        //     type_param_names: None,
-        // };
-        // format!("{}", ty.display(&tctx))
-        "TODO struct_str".to_string()
+        let ty = Type::Struct(mid, sid, targs.to_vec());
+        let tctx = TypeDisplayContext::WithoutEnv { 
+            symbol_pool: &self.stbgr.symbol_pool, 
+            reverse_struct_table: &self.stbgr.reverse_struct_table 
+        };
+        format!("{}", ty.display(&tctx))
     }
 }
 
@@ -508,4 +508,3 @@ impl<'a> std::fmt::Display for BorrowEdgeDisplay<'a> {
         Ok(())
     }
 }
-

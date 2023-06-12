@@ -12,7 +12,6 @@ fn test_source2stackless_ir() {
 #[test]
 fn test_get_from_bytecode_modules() {
     let dir = "./testdata/examples_mv/aptos/";
-    let dir = "/Users/lteng/Movebit/detect/build/movebit/bytecode_modules";
     let bc = Blockchain::Aptos;
     let ms = MoveScanner::new(dir, bc);
 

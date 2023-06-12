@@ -1,4 +1,4 @@
-use std::{collections::{BTreeMap, BTreeSet}, vec};
+use std::{collections::{BTreeMap, BTreeSet}, vec, fmt};
 use itertools::Itertools;
 use move_stackless_bytecode::{
     stackless_bytecode::{
@@ -33,7 +33,7 @@ use move_binary_format::{
 };
 use num::{BigUint, Num};
 use move_model::{
-    ast::{ConditionKind, TempIndex, ModuleName, Attribute, Spec},
+    ast::{ConditionKind, TempIndex, ModuleName, Attribute, Spec, QualifiedSymbol},
     model::{
         FunId, FunctionEnv, 
         Loc, ModuleId, StructId, 
@@ -41,7 +41,7 @@ use move_model::{
         FieldId, FieldData, 
         FunctionData, StructInfo, FieldInfo
     },
-    ty::{PrimitiveType, Type},
+    ty::{PrimitiveType, Type, TypeDisplayContext},
     symbol::{Symbol, SymbolPool, self},
 };
 use move_core_types::{
@@ -49,6 +49,9 @@ use move_core_types::{
     value::MoveValue,
 };
 use move_core_types::{account_address::AccountAddress, identifier::Identifier};
+
+use crate::utils::utils;
+use crate::move_ir::bytecode_display;
 
 
 pub fn addr_to_big_uint(addr: &AccountAddress) -> BigUint {
@@ -61,6 +64,7 @@ pub struct StacklessBytecodeGenerator<'a> {
     pub module: &'a CompiledModule,
     pub module_data: ModuleData,
     pub func_define: &'a FunctionDefinition,
+    pub func_define_idx: FunctionDefinitionIndex,
     pub temp_count: usize,
     pub temp_stack: Vec<usize>,
     pub local_types: Vec<Type>,
@@ -69,9 +73,7 @@ pub struct StacklessBytecodeGenerator<'a> {
     pub loop_invariants: BTreeSet<AttrId>,
     pub fallthrough_labels: BTreeSet<Label>,
     pub symbol_pool: SymbolPool,
-
-    pub struct_idx_to_id: BTreeMap<StructDefinitionIndex, StructId>,
-    pub function_idx_to_id: BTreeMap<FunctionDefinitionIndex, FunId>,
+    pub reverse_struct_table: BTreeMap<(ModuleId, StructId), QualifiedSymbol>,
 }
 
 impl<'a> StacklessBytecodeGenerator<'a> {
@@ -84,6 +86,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
         let mut module_data = ModuleData::stub(module_name.clone(), module_id, cm.clone());
 
         // add functions
+        let mut func_define_idx = FunctionDefinitionIndex(0 as u16);
         for (i, def) in cm.function_defs().iter().enumerate() {
             let def_idx = FunctionDefinitionIndex(i as u16);
             let name = cm.identifier_at(cm.function_handle_at(def.function).name);
@@ -92,8 +95,12 @@ impl<'a> StacklessBytecodeGenerator<'a> {
             let data = FunctionData::stub(symbol, def_idx, def.function);
             module_data.function_data.insert(fun_id, data);
             module_data.function_idx_to_id.insert(def_idx, fun_id);
+            if def == func_define {
+                func_define_idx = def_idx;
+            }
         }
 
+        let mut reverse_struct_table = BTreeMap::new();
         // add structs
         for (i, def) in cm.struct_defs().iter().enumerate() {
             let def_idx = StructDefinitionIndex(i as u16);
@@ -103,12 +110,18 @@ impl<'a> StacklessBytecodeGenerator<'a> {
             let data = create_move_struct_data(&symbol_pool, cm, def_idx, symbol, Loc::default(), Vec::default());
             module_data.struct_data.insert(struct_id, data);
             module_data.struct_idx_to_id.insert(def_idx, struct_id);
+            
+            let addr = addr_to_big_uint(id.address());
+            let module_name = ModuleName::new(addr, symbol_pool.make(id.name().as_str()));
+            let qsymbol = QualifiedSymbol{module_name, symbol};
+            reverse_struct_table.insert((module_id, struct_id), qsymbol);
         }
-        
+
         StacklessBytecodeGenerator {
             module: cm,
             module_data: module_data,
             func_define: func_define,
+            func_define_idx: func_define_idx,
             temp_count: 0,
             temp_stack: vec![],
             local_types: vec![],
@@ -117,8 +130,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
             loop_invariants: BTreeSet::new(),
             fallthrough_labels: BTreeSet::new(),
             symbol_pool: symbol_pool,
-            struct_idx_to_id: BTreeMap::new(),
-            function_idx_to_id: BTreeMap::new(),
+            reverse_struct_table,
         }
     }
 
@@ -1343,32 +1355,25 @@ impl<'a> StacklessBytecodeGenerator<'a> {
 
     /// Create a new attribute id and populate location table.
     fn new_loc_attr(&mut self, code_offset: CodeOffset) -> AttrId {
-        // // let loc = self.func_env.get_bytecode_loc(code_offset);
-        // if let Ok(fmap) = self.module_data.source_map
-        //     .get_function_source_map(self.func_define)
-        // {
-        //     if let Some(loc) = fmap.get_code_location(code_offset) {
-        //         return self.module_env.env.to_loc(&loc);
-        //     }
-        // }
-        // self.get_loc()
+        let loc = self.get_bytecode_loc(code_offset);
+        let attr = AttrId::new(self.location_table.len());
+        self.location_table.insert(attr, loc);
+        attr
+    }
 
-        // let attr = AttrId::new(self.location_table.len());
-        // self.location_table.insert(attr, loc);
-        // attr
-        // TODO
-        AttrId::new(1)
+    pub fn get_bytecode_loc(&self, offset: u16) -> Loc {
+        let func_id = self.module_data.function_idx_to_id[&self.func_define_idx];
+        let func_data = &self.module_data.function_data[&func_id];
+        func_data.loc.clone()
     }
 
     fn get_field_info(&self, field_handle_index: FieldHandleIndex) -> (StructId, usize, Type) {
         let field_handle = self.module.field_handle_at(field_handle_index);
         let struct_def = self.module.struct_def_at(field_handle.owner);
         let struct_id = self.get_struct_id_by_idx(&struct_def.struct_handle);
-        // let struct_env = self.func_env.module_env.get_struct(struct_id);
         let name = self.module.identifier_at(self.module.struct_handle_at(struct_def.struct_handle).name);
         let symbol = self.symbol_pool.make(name.as_str());
         let struct_data = create_move_struct_data(&self.symbol_pool, self.module, field_handle.owner, symbol, Loc::default(),  Vec::default(),);
-        // let field_env = struct_env.get_field_by_offset(field_handle.field as usize);
         let offset = field_handle.field as usize;
         let mut filed_data =  struct_data.field_data.first_key_value().unwrap().1;
         for data in struct_data.field_data.values() {
@@ -1379,7 +1384,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
         (struct_id, field_handle.field as usize, self.get_type(filed_data))
     }
     
-    fn globalize_signature(&self, sig: &SignatureToken) -> Type {
+    pub fn globalize_signature(&self, sig: &SignatureToken) -> Type {
         match sig {
             SignatureToken::Bool => Type::Primitive(PrimitiveType::Bool),
             SignatureToken::U8 => Type::Primitive(PrimitiveType::U8),
@@ -1475,7 +1480,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
         }
     }
 
-    fn get_local_type(&self, view: &FunctionDefinitionView<CompiledModule>, idx: usize) -> Type {
+    pub fn get_local_type(&self, view: &FunctionDefinitionView<CompiledModule>, idx: usize) -> Type {
         let parameters = view.parameters();
         if idx < parameters.len() {
             self.globalize_signature(&parameters.0[idx])
@@ -1487,6 +1492,32 @@ impl<'a> StacklessBytecodeGenerator<'a> {
                     .signature_token(),
             )
         }
+    }
+
+    pub fn get_local_name(&self, idx: usize) -> Symbol {
+        let func_id = self.module_data.function_idx_to_id[&self.func_define_idx];
+        let func_data = &self.module_data.function_data[&func_id];
+        if idx < func_data.arg_names.len() {
+            return func_data.arg_names[idx as usize];
+        }
+        // Try to obtain name from source map.
+        if let Ok(fmap) = self.module_data
+            .source_map
+            .get_function_source_map(self.func_define_idx)
+        {
+            if let Some((ident, _)) = fmap.get_parameter_or_local_name(idx as u64) {
+                // The Move compiler produces temporary names of the form `<foo>%#<num>`,
+                // where <num> seems to be generated non-deterministically.
+                // Substitute this by a deterministic name which the backend accepts.
+                let clean_ident = if ident.contains("%#") {
+                    format!("tmp#${}", idx)
+                } else {
+                    ident
+                };
+                return self.symbol_pool.make(clean_ident.as_str());
+            }
+        }
+        self.symbol_pool.make(&format!("$t{}", idx))
     }
 
     fn get_fun_id_by_idx(&self, idx: &FunctionHandleIndex) -> FunId {
@@ -1553,5 +1584,114 @@ pub fn create_move_struct_data(
         info,
         field_data,
         spec: Spec::default(),
+    }
+}
+
+impl<'env> fmt::Display for StacklessBytecodeGenerator<'env> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let func_id = self.module_data.function_idx_to_id[&self.func_define_idx];
+        let func_data = &self.module_data.function_data[&func_id];
+        let view = FunctionDefinitionView::new(self.module, self.func_define);
+        let modifier = if self.func_define.is_native() {
+            "native "
+        } else {
+            ""
+        };
+        write!(
+            f,
+            "{}{}fun {}::{}",
+            utils::visibility_str(&self.func_define.visibility),
+            modifier,
+            self.module_data.name.display(&self.symbol_pool),
+            func_data.name.display(&self.symbol_pool)
+        )?;
+        // ghost_type_param_count?
+        let tparams_count_all = view.type_parameters().len() + 0;
+        let tparams_count_defined = view.type_parameters().len();
+        if tparams_count_all != 0 {
+            write!(f, "<")?;
+            for i in 0..tparams_count_all {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "#{}", i)?;
+                if i >= tparams_count_defined {
+                    write!(f, "*")?; // denotes a ghost type parameter
+                }
+            }
+            write!(f, ">")?;
+        }
+        // TODO
+        let tctx = TypeDisplayContext::WithoutEnv { 
+            symbol_pool: &self.symbol_pool, 
+            reverse_struct_table: &self.reverse_struct_table 
+        } ;
+        let user_local_count = match view.locals_signature() {
+            Some(locals_view) => locals_view.len(),
+            None => view.parameters().len(),
+        };
+        let write_decl = |f: &mut fmt::Formatter<'_>, i: TempIndex| {
+            // let ty_ = self.get_local_type(&view, i);
+            let ty_ = &self.local_types[i];
+            let ty = ty_.display(&tctx);
+            if i < user_local_count {
+                write!(
+                    f,
+                    "$t{}|{}: {}",
+                    i,
+                    self.get_local_name(i)
+                        .display(&self.symbol_pool),
+                    ty
+                )
+            } else {
+                write!(f, "$t{}: {}", i, ty)
+            }
+        };
+        write!(f, "(")?;
+        
+        for i in 0..view.arg_tokens().count() {
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+            write_decl(f, i)?;
+        }
+        write!(f, ")")?;
+        if view.return_count() > 0 {
+            write!(f, ": ")?;
+            if view.return_count() > 1 {
+                write!(f, "(")?;
+            }
+            let returns = &view.return_().0;
+            for i in 0..view.return_count() {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", self.globalize_signature(&returns[i]).display(&tctx))?;
+            }
+            if view.return_count() > 1 {
+                write!(f, ")")?;
+            }
+        }
+        if self.func_define.is_native() {
+            writeln!(f, ";")?;
+        } else {
+            writeln!(f, " {{")?;
+            for i in view.arg_tokens().count()..self.local_types.len() {
+                write!(f, "     var ")?;
+                write_decl(f, i)?;
+                writeln!(f)?;
+            }
+            
+            let bytecodes = self.code.clone();
+            let label_offsets = Bytecode::label_offsets(&bytecodes);
+            for (offset, code) in bytecodes.iter().enumerate() {
+                println!(
+                    "{}",
+                    format!("{:>3}: {}", offset, bytecode_display::display(code, &label_offsets, &self))
+                );
+            }
+            writeln!(f, "}}")?;
+        }
+        Ok(())
     }
 }

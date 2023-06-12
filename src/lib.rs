@@ -4,5 +4,5 @@
 pub mod cli;
 pub mod move_ir;
 pub mod unit_tests;
-mod utils;
+pub mod utils;
 pub mod detect;

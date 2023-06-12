@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf, io::{BufReader, Read}};
 
-use move_binary_format::CompiledModule;
+use move_binary_format::{CompiledModule, file_format::Visibility};
 use move_model::model::ModuleEnv;
 
 
@@ -45,6 +45,14 @@ pub fn compile_module(filename: PathBuf) -> CompiledModule {
     reader.read_to_end(&mut buffer).unwrap();
     let cm = CompiledModule::deserialize(&buffer).unwrap();
     cm
+}
+
+pub fn visibility_str(visibility: &Visibility) -> &str {
+    match visibility {
+        Visibility::Public => "public ",
+        Visibility::Friend => "public(friend) ",
+        Visibility::Private => "",
+    }
 }
 
 
