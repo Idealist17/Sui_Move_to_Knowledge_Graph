@@ -219,7 +219,7 @@ impl<'env> fmt::Display for OperationDisplay<'env> {
                 write!(
                     f,
                     "{}::{}",
-                    self.stbgr.module_data.name.display(&self.stbgr.symbol_pool),
+                    self.stbgr.module_names[mid.to_usize()].display(&self.stbgr.symbol_pool),
                     fid.symbol().display(&self.stbgr.symbol_pool),
                 )?;
                 self.fmt_type_args(f, targs)?;
@@ -419,7 +419,6 @@ impl<'env> OperationDisplay<'env> {
                 write!(f, "{}", ty.display(&tctx))?;
             }
             write!(f, ">")?;
-            write!(f, "fmt_type_args")?;
         }
         Ok(())
     }
@@ -428,7 +427,7 @@ impl<'env> OperationDisplay<'env> {
         let ty = Type::Struct(mid, sid, targs.to_vec());
         let tctx = TypeDisplayContext::WithoutEnv { 
             symbol_pool: &self.stbgr.symbol_pool, 
-            reverse_struct_table: &self.stbgr.reverse_struct_table 
+            reverse_struct_table: &self.stbgr.reverse_struct_table
         };
         format!("{}", ty.display(&tctx))
     }
