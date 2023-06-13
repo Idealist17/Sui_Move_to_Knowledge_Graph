@@ -235,21 +235,23 @@ impl<'a> StacklessBytecodeGenerator<'a> {
         let attr_id = self.new_loc_attr(code_offset);
 
         let mut mk_vec_function_operation = |name: &str, tys: Vec<Type>| -> Operation {
-            // let vec_module_id = vec_module_id_opt.get_or_insert_with(|| {
-            //     let storage_id = language_storage::ModuleId::new(
-            //         CORE_CODE_ADDRESS,
-            //         move_core_types::identifier::Identifier::new("vector").unwrap(),
-            //     );
-            //     let vec_module = ModuleName::from_str(
-            //         &storage_id.address().to_string(),
-            //         // 单个module的sysbol_pool，存在问题
-            //         self.symbol_pool.make(storage_id.name().as_str()),
-            //     );
-            //     self.module_data.id
-            // });
-
+            if self.vec_module_id_opt.is_none() {
+                // let storage_id = language_storage::ModuleId::new(
+                //     CORE_CODE_ADDRESS,
+                //     move_core_types::identifier::Identifier::new("vector").unwrap(),
+                // );
+                // let vec_module = ModuleName::from_str(
+                //     &storage_id.address().to_string(),
+                //     // 单个module的sysbol_pool，存在问题
+                //     self.symbol_pool.make(storage_id.name().as_str()),
+                // );
+                // let index = self.module_names.len();
+                // self.module_names.push(vec_module);
+                // self.vec_module_id_opt = Some(ModuleId::new(index));
+                // self.vec_module_id_opt = Some(ModuleId::new(index));
+            };
             let vec_fun = FunId::new(self.symbol_pool.make(name));
-            Operation::Function(self.vec_module_id_opt.unwrap(), vec_fun, tys)
+            Operation::Function(self.module_data.id, vec_fun, tys)
         };
 
         let mk_call = |op: Operation, dsts: Vec<usize>, srcs: Vec<usize>| -> Bytecode {

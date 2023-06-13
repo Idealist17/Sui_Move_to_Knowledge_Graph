@@ -17,7 +17,7 @@ fn test_get_from_bytecode_modules() {
 
     let mut text = String::new();
     text += &ms.print_targets_for_test();
-    println!("{}", text);
+    // println!("{}", text);
 
     use std::io::Write;
     let mut file = std::fs::File::create("data.txt").expect("create failed");
