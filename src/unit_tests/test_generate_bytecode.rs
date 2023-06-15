@@ -8,11 +8,9 @@ use crate::move_ir::bytecode_display;
 
 #[test]
 fn test_generate_bytecode() {
-    let filename = PathBuf::from_str("/Users/lteng/Movebit/detect/build/movebit/bytecode_modules/unchecked_return.mv").unwrap();
+    let filename = PathBuf::from_str("/home/yule/Movebit/detect/build/movebit/bytecode_modules/unchecked_return.mv").unwrap();
     let cm = compile_module(filename);
-    for fd in &cm.function_defs {
-        let mut bg = StacklessBytecodeGenerator::new(&cm, fd);
+    let mut bg = StacklessBytecodeGenerator::new(&cm);
         bg.generate_function();
         println!("{}", bg);
-    }
 }

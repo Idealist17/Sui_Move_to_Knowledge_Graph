@@ -79,7 +79,7 @@ pub struct StacklessBytecodeGenerator<'a> {
 }
 
 impl<'a> StacklessBytecodeGenerator<'a> {
-    pub fn new(cm: &'a CompiledModule, func_define: &'a FunctionDefinition) -> Self {
+    pub fn new(cm: &'a CompiledModule) -> Self {
         let id = cm.self_id();
         let addr = addr_to_big_uint(id.address());
         let symbol_pool = SymbolPool::new();
