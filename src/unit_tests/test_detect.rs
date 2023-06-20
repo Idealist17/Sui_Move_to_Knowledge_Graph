@@ -31,6 +31,24 @@ fn test_detect_unchecked_return() {
 }
 
 #[test]
+fn test_detect_overflow() {
+    let filename = PathBuf::from_str("/home/yule/Movebit/detect/build/movebit/bytecode_modules/overflow.mv").unwrap();
+    let cm = compile_module(filename);
+    let mut stbgr = StacklessBytecodeGenerator::new(&cm);
+    stbgr.generate_function();
+    for (idx, function) in stbgr.functions.iter().enumerate() {
+        println!("{:?}", function.code);
+        let func_define = cm.function_def_at(FunctionDefinitionIndex::new(idx as u16));
+        let view = FunctionDefinitionView::new(&cm, &func_define);
+        let parameters_len = view.parameters().len();
+        if detect_overflow(function, &function.local_types) {
+            let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
+            println!("{} : {}", name, "overflow");
+        }
+    }
+}
+
+#[test]
 fn test_detect_precision_loss() {
     let filename = PathBuf::from_str("/home/yule/Movebit/detect/build/movebit/bytecode_modules/precision.mv").unwrap();
     let cm = compile_module(filename);
@@ -43,6 +61,52 @@ fn test_detect_precision_loss() {
             println!("{} : {}", name, "precision loss");
         }
     }
+}
+
+#[test]
+fn test_detect_infinite_loop() {
+    // let filename = PathBuf::from_str("").unwrap();
+    // let cm = compile_module(filename);
+    // let mut stbgr = StacklessBytecodeGenerator::new(&cm);
+    // stbgr.generate_function();
+    // for (idx, function) in stbgr.functions.iter().enumerate() {
+    //     if detect_infinite_loop(function, &function.local_types) {
+    //         let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
+    //         println!("{} : {}", name, "unnecessary type conversion");
+    //     }
+    // }
+}
+
+#[test]
+fn test_detect_unused_constant() {
+    // let filename = PathBuf::from_str("/home/yule/Movebit/detect/build/movebit/bytecode_modules/unnecessary_type_conversion.mv").unwrap();
+    // let cm = compile_module(filename);
+    // let mut stbgr = StacklessBytecodeGenerator::new(&cm);
+    // stbgr.generate_function();
+    // for (idx, function) in stbgr.functions.iter().enumerate() {
+    //     // println!("{:?}", function.code);
+    //     // println!("{:?}", &function.local_types);
+    //     if detect_unnecessary_type_conversion(function, &function.local_types) {
+    //         let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
+    //         println!("{} : {}", name, "unnecessary type conversion");
+    //     }
+    // }
+}
+
+#[test]
+fn test_detect_unused_private_functions() {
+    // let filename = PathBuf::from_str("/home/yule/Movebit/detect/build/movebit/bytecode_modules/unnecessary_type_conversion.mv").unwrap();
+    // let cm = compile_module(filename);
+    // let mut stbgr = StacklessBytecodeGenerator::new(&cm);
+    // stbgr.generate_function();
+    // for (idx, function) in stbgr.functions.iter().enumerate() {
+    //     // println!("{:?}", function.code);
+    //     // println!("{:?}", &function.local_types);
+    //     if detect_unnecessary_type_conversion(function, &function.local_types) {
+    //         let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
+    //         println!("{} : {}", name, "unnecessary type conversion");
+    //     }
+    // }
 }
 
 #[test]
@@ -72,24 +136,6 @@ fn test_detect_unnecessary_bool_judgment() {
         if detect_unnecessary_bool_judgment(function, &function.local_types) {
             let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
             println!("{} : {}", name, "unnecessary bool judgment");
-        }
-    }
-}
-
-#[test]
-fn test_detect_overflow() {
-    let filename = PathBuf::from_str("/home/yule/Movebit/detect/build/movebit/bytecode_modules/overflow.mv").unwrap();
-    let cm = compile_module(filename);
-    let mut stbgr = StacklessBytecodeGenerator::new(&cm);
-    stbgr.generate_function();
-    for (idx, function) in stbgr.functions.iter().enumerate() {
-        println!("{:?}", function.code);
-        let func_define = cm.function_def_at(FunctionDefinitionIndex::new(idx as u16));
-        let view = FunctionDefinitionView::new(&cm, &func_define);
-        let parameters_len = view.parameters().len();
-        if detect_overflow(function, &function.local_types) {
-            let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
-            println!("{} : {}", name, "overflow");
         }
     }
 }
