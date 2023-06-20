@@ -6,8 +6,11 @@ use move_binary_format::views::FunctionDefinitionView;
 
 use crate::detect::detect2::detect_overflow;
 use crate::detect::detect3::detect_precision_loss;
+use crate::detect::detect4::detect_infinite_loop;
 use crate::detect::detect7::detect_unnecessary_type_conversion;
 use crate::detect::detect8::detect_unnecessary_bool_judgment;
+use crate::move_ir::control_flow_graph::generate_cfg_in_dot_format;
+use crate::move_ir::data_dependency::data_dependency;
 use crate::move_ir::{
     bytecode_display, 
     generate_bytecode::StacklessBytecodeGenerator
@@ -39,6 +42,6 @@ fn test_loop() {
     stbgr.get_control_flow_graph();
     let filename = PathBuf::from("cfg.dot");
     generate_cfg_in_dot_format(&stbgr.functions[0], filename, &stbgr);
-    let data_depent: crate::move_ir::data_dependency::DataDepent = data_dependency(&stbgr, 0);
+    let data_depent = data_dependency(&stbgr, 0);
     detect_infinite_loop(&stbgr, 0);
 }
