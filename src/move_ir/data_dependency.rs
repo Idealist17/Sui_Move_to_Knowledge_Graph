@@ -59,7 +59,7 @@ impl Node {
         match &self.value {
             Val::Oper(op) => {
                 for subnode in self.subnodes.iter() {
-                    is_const = is_const && subnode.maybe_changed();
+                    is_const = is_const && subnode.is_const();
                 }
             },
             Val::Const(con) => {
@@ -69,7 +69,7 @@ impl Node {
                 is_const = is_const && false;
             },
             Val::AssIgn(_) => {
-                is_const = is_const && self.subnodes[0].maybe_changed();
+                is_const = is_const && self.subnodes[0].is_const();
             }
         };
         is_const
