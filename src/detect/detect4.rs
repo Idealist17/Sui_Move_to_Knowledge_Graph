@@ -9,11 +9,11 @@ use crate::move_ir::{generate_bytecode::{FunctionInfo, StacklessBytecodeGenerato
 
 
 pub fn detect_infinite_loop(stbgr: &StacklessBytecodeGenerator, idx: usize) -> bool {
-    let mut ret_flag = true;
     let function = &stbgr.functions[idx];
     let (natural_loops, fat_loops) = get_loops(function);
     let data_depent = data_dependency(stbgr, idx);
     let cfg = function.cfg.as_ref().unwrap();
+    let mut ret_flag = if fat_loops.fat_loops.len() > 0 {true} else {false};
     for (bid, fat_loop) in fat_loops.fat_loops.iter() {
         let mut branchs = vec![];
         let mut unions: BTreeSet<BlockId> = BTreeSet::new();
@@ -55,7 +55,7 @@ pub fn detect_infinite_loop(stbgr: &StacklessBytecodeGenerator, idx: usize) -> b
                     // println!("{}", res);
 
                     let is_const = cond.is_const(); // 全部是数值型常量为true
-                    println!("{} {}", src, is_const);
+                    // println!("{} {}", src, is_const);
                     ret_flag = ret_flag & is_const; // 所有循环中有一个循环条件为const，则为死循环
                 },
                 _ => {

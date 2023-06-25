@@ -44,4 +44,7 @@ fn test_loop() {
     generate_cfg_in_dot_format(&stbgr.functions[0], filename, &stbgr);
     let data_depent = data_dependency(&stbgr, 0);
     detect_infinite_loop(&stbgr, 0);
+    stbgr.functions.iter().enumerate().map(|(idx, function)| {
+        detect_unchecked_return(function);
+    });
 }

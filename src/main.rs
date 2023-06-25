@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr, fmt::format, fs};
+use std::{path::PathBuf, str::FromStr, fmt::format, fs, vec};
 
 use clap::Parser;
 use MoveScanner::{
@@ -16,15 +16,18 @@ use MoveScanner::{
         detect8::detect_unnecessary_bool_judgment, 
         }
 };
-use move_binary_format::access::ModuleAccess;
+use itertools::Itertools;
+use move_binary_format::{access::ModuleAccess, CompiledModule};
+use move_core_types::identifier::IdentStr;
 
 fn main() {
     let cli = Cli::parse();
     let dir = PathBuf::from(&cli.filedir);
     let mut paths = Vec::new();
     utils::visit_dirs(&dir, &mut paths, false);
+
     for filename in paths {
-        let cm = compile_module(filename);
+        let cm = compile_module(filename.clone());
         let mut stbgr = StacklessBytecodeGenerator::new(&cm);
         stbgr.generate_function();
         stbgr.get_control_flow_graph();
@@ -58,113 +61,96 @@ fn main() {
                 }
             },
             Some(Commands::Detection { detection }) => {
-                // println!("{:?}",function.code);
+                println!("============== Handling for {:?} ==============", filename.to_str().unwrap());
+                let mut detects: Vec<Vec<usize>> = vec![Vec::new(); 6];
                 match *detection {
                     Some(Defects::UncheckedReturn) => {
                        stbgr.functions.iter().enumerate().map(|(idx, function)| {
                             if detect_unchecked_return(function) {
-                                let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
-                                println!("{} : {}", name, "unchecked return");
+                                detects[0].push(idx);
                             }
                         }).for_each(drop);
                     },
                     Some(Defects::Overflow) => {
                         stbgr.functions.iter().enumerate().map(|(idx, function)| {
                         if detect_overflow(function) {
-                                let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
-                                println!("{} : {}", name, "overflow");
+                                detects[1].push(idx);
                             }
                         }).for_each(drop);
                     },
                     Some(Defects::PrecisionLoss) => {
                         stbgr.functions.iter().enumerate().map(|(idx, function)| {
                             if detect_precision_loss(function, &stbgr.symbol_pool) {
-                                let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
-                                println!("{} : {}", name, "precision loss");
+                                detects[2].push(idx);
                             }
                         }).for_each(drop);
                     },
                     Some(Defects::InfiniteLoop) => {
                         stbgr.functions.iter().enumerate().map(|(idx, function)| {
                             if detect_infinite_loop(&stbgr, idx) {
-                                let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
-                                println!("{} : {}", name, "infinite loop");
+                                detects[3].push(idx);
                             }
-                        }).for_each(drop);
-                    },
-                    Some(Defects::UnusedConstant) => {
-                        let unused_constants = detect_unused_constants(&stbgr);
-                        unused_constants.iter().map(|con| {
-                            println!("{}", con);
-                        }).for_each(drop);
-                    },
-                    Some(Defects::UnusedPrivateFunctions) => {
-                        let unused_private_functions = detect_unused_private_functions(&stbgr);
-                        unused_private_functions.iter().map(|func| {
-                            println!("{}", func.symbol().display(&stbgr.symbol_pool));
                         }).for_each(drop);
                     },
                     Some(Defects::UnnecessaryTypeConversion) => {
                         let _ = stbgr.functions.iter().enumerate().map(|(idx, function)| {
                             if detect_unnecessary_type_conversion(function, &function.local_types) {
-                                let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
-                                println!("{} : {}", name, "unnecessary type conversion");
+                                detects[4].push(idx);
                             }
                         }).for_each(drop);
                     },
                     Some(Defects::UnnecessaryBoolJudgment) => {
                         stbgr.functions.iter().enumerate().map(|(idx, function)| {
                             if detect_unnecessary_bool_judgment(function, &function.local_types) {
-                                let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
-                                println!("{} : {}", name, "unnecessary bool judgment");
+                                detects[5].push(idx);
                             }
                         }).for_each(drop);
+                    },
+                    Some(Defects::UnusedConstant) => {
+                        let unused_constants = detect_unused_constants(&stbgr);
+                        println!("Unused constants: {:?}", unused_constants);
+                    },
+                    Some(Defects::UnusedPrivateFunctions) => {
+                        let unused_private_functions = detect_unused_private_functions(&stbgr);
+                        let unused_private_function_names = unused_private_functions.iter().map(|func| {
+                            func.symbol().display(&stbgr.symbol_pool).to_string()
+                        }).collect_vec();
+                        println!("Unused private functions: {:?}", unused_private_function_names);
                     },
                     None => {
                         for (idx, function) in stbgr.functions.iter().enumerate() {
                             if detect_unchecked_return(function) {
-                                let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
-                                println!("{} : {}", name, "unchecked return");
+                                detects[0].push(idx);
                             }
                             if detect_overflow(function) {
-                                let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
-                                println!("{} : {}", name, "overflow");
+                                detects[1].push(idx);
                             }
                             if detect_precision_loss(function, &stbgr.symbol_pool) {
-                                let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
-                                println!("{} : {}", name, "precision loss");
+                                detects[2].push(idx);
                             }
                             if detect_infinite_loop(&stbgr, idx) {
-                                let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
-                                println!("{} : {}", name, "infinite loop");
+                                detects[3].push(idx);
+
                             }
                             if detect_unnecessary_type_conversion(function, &function.local_types) {
-                                let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
-                                println!("{} : {}", name, "unnecessary type conversion");
+                                detects[4].push(idx);
                             }
                             if detect_unnecessary_bool_judgment(function, &function.local_types) {
-                                let name = cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name);
-                                println!("{} : {}", name, "unnecessary bool judgment");
+                                detects[5].push(idx);
                             }
                         }
                         let unused_constants = detect_unused_constants(&stbgr);
-                        unused_constants.iter().map(|con| {
-                            println!("{}", con);
-                        }).for_each(drop);
+                        println!("Unused constants: {:?}", unused_constants);
                         let unused_private_functions = detect_unused_private_functions(&stbgr);
-                        unused_private_functions.iter().map(|func| {
-                            println!("{}", func.symbol().display(&stbgr.symbol_pool));
-                        }).for_each(drop);
+                        let unused_private_function_names = unused_private_functions.iter().map(|func| {
+                            func.symbol().display(&stbgr.symbol_pool).to_string()
+                        }).collect_vec();
+                        println!("Unused private functions: {:?}", unused_private_function_names);
                     },
-                    _ => {
-                        println!("ERROR!");
-                    }
                 }
-                println!(
-                    "myapp detection was used for dealing with {}, name is: {:?}",
-                    cli.filedir, detection
-                )
-            },
+                format_result(&detects, &cm);
+                println!("==============================================\n");
+            },                                            
             None => {
                 println!(
                     "no app was used for dealing with {}",
@@ -172,5 +158,26 @@ fn main() {
                 )
             }
         }
+    }
+}
+
+fn format_result(detects: &Vec<Vec<usize>>, cm: &CompiledModule) {
+    let detect_types = [
+        "Unchecked return",
+        "Overflow",
+        "Precision loss",
+        "Infinite loop",
+        "Unnecessary type conversion",
+        "Unnecessary bool judgment",
+    ];
+    for (i, d_type) in detect_types.iter().enumerate() {
+        if detects[i].len() == 0 {
+            continue;
+        }
+        let detect_fname = detects[i].iter().map(|idx| {
+            let handle = cm.function_handle_at(cm.function_defs[*idx].function);
+            cm.identifier_at(handle.name).as_str()
+        }).collect_vec();
+        println!("{}: {:?}", *d_type, detect_fname);
     }
 }
