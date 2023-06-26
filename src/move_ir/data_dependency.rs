@@ -141,7 +141,8 @@ pub fn data_dependency<'a>(stbgr: &'a StacklessBytecodeGenerator, idx: usize) ->
         data_depent.insert_or_modify(i, node);
     }
 
-    for code in function.code.iter() {
+    for (ii, code) in function.code.iter().enumerate() {
+        println!("{} {:?}", ii, code);
         match code {
             Assign(_, dst, src, kind) => {
                 let node = data_depent.get(*src);
@@ -156,12 +157,12 @@ pub fn data_dependency<'a>(stbgr: &'a StacklessBytecodeGenerator, idx: usize) ->
                             let a = fid.symbol().display(&stbgr.symbol_pool).to_string();
                             let fname = a.as_str();
                             match fname {
-                                "length" => {
+                                "length" | "pop_back" => {
                                     let node = data_depent.get(srcs[0]);
                                     let node = Node::new_with_node(Val::Oper(oper.clone()), node);
                                     data_depent.insert_or_modify(dsts[0], node);
                                 },
-                                "borrow_mut" | "borrow" | "pop_back" => {
+                                "borrow_mut" | "borrow" => {
                                     let lnode = data_depent.get(srcs[0]);
                                     let rnode = data_depent.get(srcs[1]);
                                     let node = Node::new_with_binary_nodes(Val::Oper(oper.clone()), lnode, rnode);
@@ -172,8 +173,12 @@ pub fn data_dependency<'a>(stbgr: &'a StacklessBytecodeGenerator, idx: usize) ->
                                     data_depent.insert_or_modify(dsts[0], node);
                                 },
                                 _ => {
-                                    // swap 3 -> 0 push_back 2 -> 0
-                                    continue;
+                                    // swap 3 -> 0 push_back 2 -> 0 
+                                    // continue;
+                                    let node = Node::new(Val::Oper(oper.clone()));
+                                    for dst in dsts {
+                                        data_depent.insert_or_modify(*dst, node.clone());
+                                    }
                                 }
                             }
                         } else { // 终止
