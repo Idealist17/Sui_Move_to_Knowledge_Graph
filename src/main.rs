@@ -65,7 +65,7 @@ fn main() {
                 match *detection {
                     Some(Defects::UncheckedReturn) => {
                        stbgr.functions.iter().enumerate().map(|(idx, function)| {
-                            if detect_unchecked_return(function) {
+                            if detect_unchecked_return(function, &stbgr.symbol_pool, idx, &cm) {
                                 detects[0].push(idx);
                             }
                         }).for_each(drop);
@@ -118,7 +118,7 @@ fn main() {
                     },
                     None => {
                         for (idx, function) in stbgr.functions.iter().enumerate() {
-                            if detect_unchecked_return(function) {
+                            if detect_unchecked_return(function, &stbgr.symbol_pool, idx, &cm) {
                                 detects[0].push(idx);
                             }
                             if detect_overflow(function) {

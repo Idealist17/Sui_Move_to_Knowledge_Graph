@@ -27,8 +27,8 @@ fn test_detect_unchecked_return() {
     let mut stbgr = StacklessBytecodeGenerator::new(&cm);
     stbgr.generate_function();
     for (idx, function) in stbgr.functions.iter().enumerate() {
-        if detect_unchecked_return(function) {
-            println!("{}", "111");
+        if detect_unchecked_return(function, &stbgr.symbol_pool, idx, &cm) {
+            println!("{} : {}", cm.identifier_at(cm.function_handle_at(cm.function_defs[idx].function).name), "unchecked return");
         }
     }
 }
@@ -46,6 +46,6 @@ fn test_loop() {
     let data_depent = data_dependency(&stbgr, 0);
     detect_infinite_loop(&stbgr, 0);
     stbgr.functions.iter().enumerate().map(|(idx, function)| {
-        detect_unchecked_return(function);
+        detect_unchecked_return(function, &stbgr.symbol_pool, idx, &cm);
     });
 }
