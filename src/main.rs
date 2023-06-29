@@ -140,22 +140,58 @@ fn main() {
                             }
                         }
                         let unused_constants = detect_unused_constants(&stbgr);
-                        println!("Unused constants: {:?}", unused_constants);
+                        if !unused_constants.is_empty() {
+                            println!("Unused constants: {:?}", unused_constants);
+                        }
                         let unused_private_functions = detect_unused_private_functions(&stbgr);
                         let unused_private_function_names = unused_private_functions.iter().map(|func| {
                             func.symbol().display(&stbgr.symbol_pool).to_string()
                         }).collect_vec();
-                        println!("Unused private functions: {:?}", unused_private_function_names);
+                        if !unused_private_function_names.is_empty() {
+                            println!("Unused private functions: {:?}", unused_private_function_names);
+                        }
                     },
                 }
                 format_result(&detects, &cm);
                 println!("==============================================\n");
             },                                            
             None => {
-                println!(
-                    "no app was used for dealing with {}",
-                    cli.filedir
-                )
+                println!("============== Handling for {:?} ==============", filename.to_str().unwrap());
+                let mut detects: Vec<Vec<usize>> = vec![Vec::new(); 6];
+                for (idx, function) in stbgr.functions.iter().enumerate() {
+                    if detect_unchecked_return(function, &stbgr.symbol_pool, idx, &cm) {
+                        detects[0].push(idx);
+                    }
+                    if detect_overflow(function) {
+                        detects[1].push(idx);
+                    }
+                    if detect_precision_loss(function, &stbgr.symbol_pool) {
+                        detects[2].push(idx);
+                    }
+                    if detect_infinite_loop(&stbgr, idx) {
+                        detects[3].push(idx);
+
+                    }
+                    if detect_unnecessary_type_conversion(function, &function.local_types) {
+                        detects[4].push(idx);
+                    }
+                    if detect_unnecessary_bool_judgment(function, &function.local_types) {
+                        detects[5].push(idx);
+                    }
+                }
+                let unused_constants = detect_unused_constants(&stbgr);
+                if !unused_constants.is_empty() {
+                    println!("Unused constants: {:?}", unused_constants);
+                }
+                let unused_private_functions = detect_unused_private_functions(&stbgr);
+                let unused_private_function_names = unused_private_functions.iter().map(|func| {
+                    func.symbol().display(&stbgr.symbol_pool).to_string()
+                }).collect_vec();
+                if !unused_private_function_names.is_empty() {
+                    println!("Unused private functions: {:?}", unused_private_function_names);
+                }
+                format_result(&detects, &cm);
+                println!("==============================================\n");
             }
         }
     }
