@@ -1,12 +1,19 @@
 use std::{fs, path::PathBuf, io::{BufReader, Read}};
 
 use move_binary_format::{CompiledModule, file_format::Visibility};
-use move_model::model::ModuleEnv;
+use move_model::{model::ModuleEnv, ty::{self, *}};
 
 
 // 依赖的 module 的 address
 const DEPADDRESSES: [&str; 2] = ["0x1::", "0x3::"];
 
+pub struct DotWeight {}
+
+impl std::fmt::Display for DotWeight {
+    fn fmt(&self, _f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        Ok(())
+    }
+}
 
 // get all .mv files in dir and subdir
 pub fn visit_dirs(dir: &PathBuf, paths: &mut Vec<PathBuf>, subdir: bool) {
@@ -40,13 +47,13 @@ pub fn is_dep_module(module_env: &ModuleEnv) -> bool {
     return is_dep
 }
 
-pub fn compile_module(filename: PathBuf) -> CompiledModule {
+pub fn compile_module(filename: PathBuf) -> Option<CompiledModule> {
     let f = fs::File::open(filename).unwrap();
     let mut reader = BufReader::new(f);
     let mut buffer = Vec::new();
     reader.read_to_end(&mut buffer).unwrap();
-    let cm = CompiledModule::deserialize(&buffer).unwrap();
-    cm
+    let cm = CompiledModule::deserialize(&buffer);
+    cm.ok()
 }
 
 pub fn visibility_str(visibility: &Visibility) -> &str {
@@ -57,6 +64,62 @@ pub fn visibility_str(visibility: &Visibility) -> &str {
     }
 }
 
+pub fn display_type(ty: &Type) {
+    match ty {
+        ty::Type::Primitive(base_ty) => {
+            match base_ty {
+                PrimitiveType::Bool => {
+                    println!("{}", "Bool"); 
+                }
+                PrimitiveType::U8 => {
+                    println!("{}", "U8"); 
+                }
+                PrimitiveType::U16 => {
+                    println!("{}", "U16"); 
+                }
+                PrimitiveType::U32 => {
+                    println!("{}", "Bool"); 
+                }
+                PrimitiveType::U64 => {
+                    println!("{}", "U64"); 
+                }
+                PrimitiveType::U128 => {
+                    println!("{}", "U128"); 
+                }
+                PrimitiveType::U256 => {
+                    println!("{}", "U256"); 
+                }
+                PrimitiveType::Address => {
+                    println!("{}", "Address"); 
+                }
+                PrimitiveType::Signer => {
+                    println!("{}", "Signer"); 
+                }
+                _ => {
+                    println!("{}", "Else"); 
+                }
+            }
+        },
+        ty::Type::Tuple(_) => {
+            println!("{}", "Tuple");
+        },
+        ty::Type::Vector(_) => {
+            println!("{}", "Vector");
+        },
+        ty::Type::Struct(_, _, _) => {
+            println!("{}", "Struct");
+        },
+        ty::Type::TypeParameter(_) => {
+            println!("{}", "TypeParameter");
+        },
+        ty::Type::Reference(flag, _) => {
+            println!("{}, {}", flag, "Reference");
+        },
+        _ => {
+            println!("{}", "Else");
+        }
+    }
+}
 
 use anyhow::anyhow;
 use move_stackless_bytecode::{
