@@ -7,8 +7,8 @@ MoveScanner is a bytecode based move static analysis tool written in rust.
 1. Run `build.sh`:
 
    ```shell
-   cd MoveScanner
-   ./build
+   cd MoveScanner-v1
+   ./build.sh
    ```
 
 2. Please add the following to your shell configuration file(e.g., `~/.bashrc`, `~/.zshrc`):
@@ -23,7 +23,7 @@ MoveScanner is a bytecode based move static analysis tool written in rust.
 
    ```
    git pull
-   ./buildls
+   ./build.sh
    ```
 
 4. Start a new terminal session, enjoy!
