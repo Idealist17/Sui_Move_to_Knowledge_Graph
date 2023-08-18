@@ -20,7 +20,7 @@ pub struct Args {
 }
 
 #[derive(Parser)]
-#[command(author="yule liteng happytsing", version="1.0.0", about="A static analysis tool based on bytecode for move smart contracts.", long_about = None)]
+#[command(author="yule liteng happytsing", version="1.1.0", about="A static analysis tool based on bytecode for move smart contracts.", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Option<SubCommands>,

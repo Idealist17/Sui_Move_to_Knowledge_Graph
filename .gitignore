@@ -4,4 +4,6 @@
 /Cargo.lock
 /dots
 .DS_Store
-result.json
+*.json
+dots
+.dot
