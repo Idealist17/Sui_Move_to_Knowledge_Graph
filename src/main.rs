@@ -1,12 +1,14 @@
 #![allow(non_snake_case)]
 use MoveScanner::{
-    cli::parser::{Cli,SubCommands},
+    cli::parser::{Cli, SubCommands},
     scanner::{detectors::Detectors, printer::Printer},
+    utils::utils
 };
 
 use clap::Parser;
 
 fn main() {
+    utils::print_logo();
     let cli = Cli::parse();
     match &cli.command {
         Some(SubCommands::Printer) => {

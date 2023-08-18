@@ -7,7 +7,7 @@ use strum_macros::{Display, EnumIter};
 pub type ModuleName = String;
 pub type FunctionName = String;
 
-#[derive(Debug, Display,Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, Display, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub enum Status {
