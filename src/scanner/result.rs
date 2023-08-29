@@ -31,6 +31,7 @@ pub enum DetectKind {
     UnnecessaryBoolJudgment,
     UnusedConstant,
     UnusedPrivateFunctions,
+    RecursiveFunctionCall,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
@@ -141,7 +142,7 @@ impl std::fmt::Display for Result {
             Status::Pass,
             Colour::Green.paint(self.modules_status.get(&Status::Pass).unwrap().len().to_string()),
             Status::Wrong,
-            Colour::Red.paint(self.modules_status.get(&Status::Pass).unwrap().len().to_string()),
+            Colour::Red.paint(self.modules_status.get(&Status::Wrong).unwrap().len().to_string()),
             Colour::Blue.paint(self.total_time.to_string())
         )?;
 
