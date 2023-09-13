@@ -5,5 +5,6 @@
 /dots
 .DS_Store
 *.json
-dots
-.dot
+dot
+*.dot
+res
