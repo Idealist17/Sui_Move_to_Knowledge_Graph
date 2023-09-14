@@ -1,11 +1,11 @@
 use crate::{move_ir::generate_bytecode::StacklessBytecodeGenerator, utils::utils::DotWeight};
+use move_binary_format::file_format::CodeOffset;
 use move_stackless_bytecode::{
     stackless_bytecode::{Bytecode, Label},
-    stackless_control_flow_graph::{StacklessControlFlowGraph, BlockContent},
+    stackless_control_flow_graph::{BlockContent, StacklessControlFlowGraph},
 };
-use move_binary_format::file_format::CodeOffset;
 use petgraph::{dot::Dot, graph::Graph};
-use std::{collections::BTreeMap, path::PathBuf, fs};
+use std::{collections::BTreeMap, fs, path::PathBuf};
 
 use super::bytecode_display::display;
 use super::generate_bytecode::FunctionInfo;
@@ -36,7 +36,7 @@ impl<'env> std::fmt::Display for DotCFGBlock<'env> {
                         &self.label_offsets,
                         offset as usize,
                         instruction,
-                        self.stbgr
+                        self.stbgr,
                     );
                     writeln!(f, "{}", text)?;
                 }
@@ -51,7 +51,7 @@ pub fn pretty_print_bytecode(
     label_offsets: &BTreeMap<Label, CodeOffset>,
     offset: usize,
     code: &Bytecode,
-    stbgr: &StacklessBytecodeGenerator
+    stbgr: &StacklessBytecodeGenerator,
 ) -> String {
     let mut texts = vec![];
     texts.push(format!(
@@ -63,7 +63,11 @@ pub fn pretty_print_bytecode(
     texts.join("\n")
 }
 
-pub fn generate_cfg_in_dot_format<'env>(function: &'env FunctionInfo, dotfile: PathBuf, stbgr: &'env StacklessBytecodeGenerator) {
+pub fn generate_cfg_in_dot_format<'env>(
+    function: &'env FunctionInfo,
+    dotfile: PathBuf,
+    stbgr: &'env StacklessBytecodeGenerator,
+) {
     let code = &function.code;
     let cfg = StacklessControlFlowGraph::new_forward(code);
     let label_offsets = Bytecode::label_offsets(code);
@@ -92,12 +96,18 @@ pub fn generate_cfg_in_dot_format<'env>(function: &'env FunctionInfo, dotfile: P
             );
         }
     }
-    
+
     let dot_graph = format!(
         "{}",
         Dot::with_attr_getters(&graph, &[], &|_, _| "".to_string(), &|_, _| {
             "shape=box".to_string()
         })
     );
+    if let Some(parent) = dotfile.parent() {
+        if !parent.exists() {
+            // 如果父目录不存在，创建它
+            fs::create_dir_all(parent).expect("create path failed.");
+        }
+    }
     fs::write(&dotfile, &dot_graph).expect("generating dot file for CFG");
 }
