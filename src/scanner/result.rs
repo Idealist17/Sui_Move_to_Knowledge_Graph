@@ -32,6 +32,7 @@ pub enum DetectKind {
     UnusedConstant,
     UnusedPrivateFunctions,
     RecursiveFunctionCall,
+    RepeatedFunctionCall,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
@@ -170,7 +171,7 @@ impl std::fmt::Display for Result {
                 write!(f, "{}: ", Colour::Red.paint(detector_type.to_string()))?;
                 let values_str = values.iter().join(",");
                 match detector_type {
-                    DetectKind::UncheckedReturn => {
+                    DetectKind::UncheckedReturn | DetectKind::RepeatedFunctionCall => {
                         let color_value_str = &values_str
                             .replace("(", "\x1B[33m(")
                             .replace(")", ")\x1B[0m");
