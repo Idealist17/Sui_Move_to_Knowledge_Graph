@@ -65,6 +65,14 @@ impl<'a> Detector10<'a> {
         let mut func_map = HashMap::new();
         // var_sets 记录等价的参数值，例如 var_sets=[($0,$1,$2),($3,$4)]，此时说明变量 $0,$1,$2 的值相同，$3,$4 的值相同。
         let mut var_sets = Vec::new();
+        // 嵌套map，第一层 key 为结构体，第二层 map 的 key 是结构体的字段，value是等价的变量。
+        // 例如 $1= borrow_field<structA>.x($0)
+        //      $2= borrow_field<structA>.x($0)
+        // 此时 field_map = { $0: { x:[$1,$2] } }
+        let mut field_map: HashMap<
+            &usize,
+            HashMap<(&ModuleId, &move_model::model::StructId, &Vec<Type>, &usize), HashSet<&usize>>,
+        > = HashMap::new();
         // 代码入口块
         let entry_block_id = cfg.entry_block();
         stack.push(&entry_block_id);
@@ -103,7 +111,6 @@ impl<'a> Detector10<'a> {
                                 // 因为通常调用函数时，不会出现 f(a) f(b) 的情况，而只会有 f(b) f(c) ，因此这么存问题不大
                                 Operation::BorrowLoc
                                 | Operation::BorrowGlobal(..)
-                                | Operation::BorrowField(..)
                                 | Operation::FreezeRef
                                 // | Operation::WriteRef
                                 | Operation::ReadRef => {
@@ -121,6 +128,7 @@ impl<'a> Detector10<'a> {
                                         if flag {
                                             continue;
                                         }
+
                                         let mut var_set = HashSet::new();
                                         var_set.insert(&dsts[0]);
                                         var_set.insert(&args[0]);
@@ -128,6 +136,50 @@ impl<'a> Detector10<'a> {
                                     } else {
                                         println!("error：args or dsts len!=1")
                                     }
+                                }
+                                // 需要记录 borrow 的是哪个字段
+                                Operation::BorrowField(mid, sid, targs, offset) =>{
+                                    // 首先判断 borrow 的结构体是否相同
+                                    let mut same_field_var:&usize = &0;
+                                    let mut flag = false;
+                                    if args.len() == 1 && dsts.len() == 1 {
+                                        // 找到结构体的等价变量列表
+                                        var_sets.iter_mut().for_each(|var_set: &mut HashSet<&usize>| {
+                                                if var_set.contains(&args[0]) {
+                                                    var_set.iter().for_each(|&var|{
+                                                        // 从 field_map 中找到结构体的字段等价变量，存储于 var_set_internal 中
+                                                        if let Some(map) = field_map.get_mut(var){
+                                                            if let Some(var_set_internal)=map.get_mut(&(mid,sid,targs,offset)){
+                                                                // 随便取出一个值，var_set_internal中的内容都是等价的
+                                                                same_field_var = var_set_internal.iter().next().unwrap();
+                                                                var_set_internal.insert(&dsts[0]);
+                                                                flag=true;
+                                                            }
+                                                        }
+                                                    });
+                                                }
+                                        });
+                                        if flag {
+                                            // 通过 same_field_var，将新的字段等价变量添加到 var_sets 中
+                                            var_sets.iter_mut().for_each(|var_set: &mut HashSet<&usize>| {
+                                                if var_set.contains(same_field_var) {
+                                                    // tips：此时找到的 var_set_internal 和 var_set 是相同的
+                                                    var_set.insert(&dsts[0]);
+                                                    flag = true
+                                                }
+                                            });
+                                            continue;
+                                        }
+                                    }
+                                    // 首次 borrow_field 当前 struct。
+                                    let mut var_set_internal =  HashSet::new();
+                                    var_set_internal.insert(&dsts[0]);
+                                    let map = HashMap::from([((mid,sid,targs,offset),var_set_internal)]);
+                                    field_map.insert(&args[0], map);
+
+                                    let mut var_set = HashSet::new();
+                                    var_set.insert(&dsts[0]);
+                                    var_sets.push(var_set);
                                 }
 
                                 _ => {}
