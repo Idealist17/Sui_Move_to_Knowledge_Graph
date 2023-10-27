@@ -55,6 +55,9 @@ impl<'a> AbstractDetector<'a> for Detector10<'a> {
 
 impl<'a> Detector10<'a> {
     fn detect_repeated_function_call(&self, function: &FunctionInfo) -> Option<Vec<FunId>> {
+        // 限制路径总数不得超过 256，目前来看并不会影响检测结果
+        let dummy_exec_limit = 2u32.pow(8);
+        let mut dummy_exec_count = 0;
         let cfg = function.cfg.as_ref().unwrap();
         let code = &function.code;
         // stack 用于迭代 dfs，其栈顶元素为下一个要访问的区块id（block_id）
@@ -80,9 +83,6 @@ impl<'a> Detector10<'a> {
         path.push(&entry_block_id);
         let mut repeated_funids = Vec::new();
         // dfs 深度遍历
-        if function.name == "demo5_f4" {
-            println!("{:?}", function.name);
-        }
         while !stack.is_empty() {
             // 当前块以访问，从 stack 中弹出，注意，path 并不会弹出
             let block_id = stack.pop().unwrap();
@@ -229,7 +229,19 @@ impl<'a> Detector10<'a> {
                     // seen_funids 中存储已经出现过一次的 funid，及其对应的参数和参数类型
                     let mut seen_func: HashMap<FunId, Vec<(&ModuleId, &Vec<usize>, &Vec<Type>)>> =
                         HashMap::new();
-
+                    /*
+                     * TODO 当单个方法内存在多个 if 语句时，存在路径爆炸问题，引入超时机制
+                     * 一个可能的解法：在遍历的过程中，若一个节点已经执行过，且已知其中没有发生函数调用，则第二次执行时，直接跳过，可节约大量时间。
+                     * 当前解法：限制 Dummy 区块的执行次数 2^8 = 
+                     */
+                    dummy_exec_count += 1;
+                    if dummy_exec_count > dummy_exec_limit{
+                        if repeated_funids.is_empty() {
+                            return None;
+                        } else {
+                            return Some(repeated_funids);
+                        }
+                    }
                     // 拿出所有的 FunId
                     for funcs in func_map.values() {
                         for (&ref mid, &funid, &ref args, &ref targs) in funcs {

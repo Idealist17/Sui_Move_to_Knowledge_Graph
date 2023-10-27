@@ -28,7 +28,8 @@
         "-p",
         // "/home/wlq/Project/MoveBit/MoveScanner-v1/res/examples_project/recursive_call_demo",
         // "/home/wlq/Project/MoveBit/MoveScanner-v1/res/examples_project/repeated_call_demo/build/repeated_call_demo/bytecode_modules/repeated_call_demo4.mv"
-        "/home/wlq/Project/MoveBit/MoveScanner-v1/res/examples_project/repeated_call_demo/build/repeated_call_demo/bytecode_modules/repeated_call_demo5.mv"
+        "/home/wlq/Project/MoveBit/MoveScanner-v1/res/examples_project/repeated_call_demo/build/repeated_call_demo/bytecode_modules/repeated_call_demo6.mv"
+        // "/home/wlq/Project/MoveBit/MoveScanner-v1/res/examples_project/repeated_call_demo/build/repeated_call_demo/bytecode_modules/repeated_call_demo5.mv"
       ],
       "cwd": "${workspaceFolder}"
     },
