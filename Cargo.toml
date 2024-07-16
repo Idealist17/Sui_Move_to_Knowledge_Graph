@@ -12,7 +12,6 @@ move-bytecode-source-map = { git = "https://github.com/uestc-sec/move" }
 move-ir-types = { git = "https://github.com/uestc-sec/move" }
 move-disassembler =  { git = "https://github.com/uestc-sec/move" }
 move-command-line-common = { git = "https://github.com/uestc-sec/move" }
-move-compiler = { git = "https://github.com/uestc-sec/move" }
 move-model = { git = "https://github.com/uestc-sec/move" }
 move-prover-test-utils = { git = "https://github.com/uestc-sec/move" }
 move-package = { git = "https://github.com/uestc-sec/move" }

@@ -25,7 +25,6 @@ dependencies = [
  "move-bytecode-utils",
  "move-cli",
  "move-command-line-common",
- "move-compiler",
  "move-core-types",
  "move-disassembler",
  "move-ir-types",

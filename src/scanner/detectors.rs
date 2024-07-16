@@ -60,7 +60,7 @@ impl Detectors {
             Box::new(Detector7::new(&packages)),
             Box::new(Detector8::new(&packages)),
             Box::new(Detector9::new(&packages)),
-            Box::new(Detector10::new(&packages)),
+            // Box::new(Detector10::new(&packages)),
         ];
         // run detectors
         for detector in detectors.iter_mut() {
