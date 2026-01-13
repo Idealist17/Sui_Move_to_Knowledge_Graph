@@ -40,6 +40,7 @@ impl<'a> Detector2<'a> {
         stbgr: &StacklessBytecodeGenerator,
         idx: usize,
     ) -> Option<String> {
+        // << >> & 
         let function = &stbgr.functions[idx];
         let mut ret_flag = false;
         let _local_types = &function.local_types;

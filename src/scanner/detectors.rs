@@ -14,6 +14,7 @@ use crate::{
     },
     utils::utils::print_logo,
 };
+use move_binary_format::access::ModuleAccess;
 use num::ToPrimitive;
 use regex::Regex;
 use std::{
@@ -68,6 +69,28 @@ impl Detectors {
             self.merge_result(detect_content);
         }
         self.complete_result(clock);
+
+        // Export Knowledge Graph
+        let graph_output = crate::scanner::exporter::GraphExporter::export(&packages, &self.result);
+        let graph_json = serde_json::to_string_pretty(&graph_output).expect("Failed to serialize graph");
+        
+        let mut graph_path = self.options.output_path.clone();
+        if let Some(file_name) = graph_path.file_stem() {
+            let mut new_name = file_name.to_os_string();
+            new_name.push("_graph.json");
+            graph_path.set_file_name(new_name);
+        } else {
+             graph_path.set_extension("graph.json");
+        }
+
+        if let Some(dir_path) = graph_path.parent() {
+            if !dir_path.exists() {
+                 let _ = fs::create_dir_all(dir_path);
+            }
+        }
+        
+        let mut file = fs::File::create(graph_path).expect("Failed to create graph json file");
+        file.write_all(graph_json.as_bytes()).expect("Failed to write graph json");
     }
 
     pub fn output_result(&self) {
@@ -118,6 +141,20 @@ impl Detectors {
                         .unwrap() += 1;
                 }
             }
+            
+            // Extract Structs
+            for (i, def) in stbgr.module.struct_defs().iter().enumerate() {
+                 let def_idx = move_binary_format::file_format::StructDefinitionIndex(i as u16);
+                 let handle = stbgr.module.struct_handle_at(def.struct_handle);
+                 let name = stbgr.module.identifier_at(handle.name).to_string();
+                 let abilities = utils::get_struct_abilities_strs(stbgr.module, def_idx);
+                 module_info.structs.push(StructResult{
+                     name,
+                     abilities,
+                     source_code: String::new(),
+                 })
+            }
+
             self.result.add_module(module_name.to_string(), module_info);
         }
     }

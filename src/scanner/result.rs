@@ -69,6 +69,13 @@ impl DetectContent {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StructResult {
+    pub name: String,
+    pub abilities: Vec<String>,
+    pub source_code: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Result {
     pub modules_status: HashMap<Status, Vec<String>>,
     pub total_time: usize,
@@ -107,6 +114,7 @@ pub struct ModuleInfo {
     pub location: Option<Location>,
     pub function_count: HashMap<FunctionType, usize>,
     pub constant_count: usize,
+    pub structs: Vec<StructResult>,
     pub detectors: HashMap<DetectKind, Vec<String>>,
 }
 impl ModuleInfo {
@@ -115,6 +123,7 @@ impl ModuleInfo {
         location: Option<Location>,
         function_count: HashMap<FunctionType, usize>,
         constant_count: usize,
+        structs: Vec<StructResult>,
         detectors: HashMap<DetectKind, Vec<String>>,
     ) -> Self {
         Self {
@@ -122,6 +131,7 @@ impl ModuleInfo {
             location,
             function_count,
             constant_count,
+            structs,
             detectors,
         }
     }
@@ -131,7 +141,7 @@ impl ModuleInfo {
         for detect_kind in DetectKind::iter() {
             detectors.insert(detect_kind, Vec::<String>::new());
         }
-        return Self::new(Status::Wrong, None, function_count, 0, detectors);
+        return Self::new(Status::Wrong, None, function_count, 0, Vec::new(), detectors);
     }
 }
 

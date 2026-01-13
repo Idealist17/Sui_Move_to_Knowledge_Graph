@@ -24,7 +24,7 @@ pub fn visit_dirs(dir: &PathBuf, paths: &mut Vec<PathBuf>, subdir: bool) {
             let entry = entry.unwrap();
             let path = entry.path();
             if path.is_dir() {
-                if subdir {
+                if subdir && entry.file_name() != "dependencies" {
                     visit_dirs(&path, paths, subdir);
                 }
             } else {

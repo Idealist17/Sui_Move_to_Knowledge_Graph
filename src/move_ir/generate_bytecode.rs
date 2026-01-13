@@ -80,10 +80,11 @@ pub struct StacklessBytecodeGenerator<'a> {
 
     pub functions: Vec<FunctionInfo>,
     pub data_dependency: Vec<DataDepent>,
+    pub bytecode_file_path: &'a std::path::PathBuf,
 }
 
 impl<'a> StacklessBytecodeGenerator<'a> {
-    pub fn new(cm: &'a CompiledModule) -> Self {
+    pub fn new(cm: &'a CompiledModule, path: &'a std::path::PathBuf) -> Self {
         let id = cm.self_id();
         let addr = addr_to_big_uint(id.address());
         let symbol_pool = SymbolPool::new();
@@ -186,6 +187,7 @@ impl<'a> StacklessBytecodeGenerator<'a> {
             data_dependency: vec![],
             func_to_node: BTreeMap::new(),
             call_graph: Graph::new(),
+            bytecode_file_path: path,
         }
     }
 

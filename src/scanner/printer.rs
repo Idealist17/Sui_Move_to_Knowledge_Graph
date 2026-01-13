@@ -24,7 +24,6 @@ impl Printer {
         let packages = Packages::new(&cms);
         let printer_path = PathBuf::from("./printer");
         if !printer_path.exists() {
-            // 如果父目录不存在，创建它
             fs::create_dir_all(&printer_path).expect("create path failed.");
         }
         // }else{

@@ -26,13 +26,19 @@ impl Options {
         let path = PathBuf::from(&args.path);
         // 只允许一个子项目
         assert!(toml_file_count(&path) < 2, "up to one project is allowed");
-        let sources_path = find_path_by_dir_name(&path, "sources");
+        let sources_path = if let Some(s) = &args.source {
+            Some(PathBuf::from(s))
+        } else {
+            find_path_by_dir_name(&path, "sources")
+        };
         let mut bytecode_path = Some(path.clone());
         // 若存在 sources 路径，则编译项目，再找 bytecode 路径
         // println!("Detected /sources, Try to compile.");
         if let Some(sources_path) = sources_path.clone() {
-            assert!(compile(&sources_path), "compile project failed");
-            bytecode_path = find_path_by_dir_name(&path, "bytecode_modules");
+            if !args.skip_build {
+                assert!(compile(&sources_path), "compile project failed");
+                bytecode_path = find_path_by_dir_name(&path, "bytecode_modules");
+            }
         }
         let terminal_format: TerminalFormat;
         if args.none {

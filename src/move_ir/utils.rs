@@ -594,3 +594,25 @@ pub fn is_native(idx: usize, stbgr: &StacklessBytecodeGenerator) -> bool {
         .function_def_at(FunctionDefinitionIndex::new(idx as u16))
         .is_native()
 }
+
+pub fn get_struct_abilities_strs(
+    module: &CompiledModule,
+    def_idx: StructDefinitionIndex,
+) -> Vec<String> {
+    let handle_idx = module.struct_def_at(def_idx).struct_handle;
+    let abilities = module.struct_handle_at(handle_idx).abilities;
+    let mut res = Vec::new();
+    if abilities.has_copy() {
+        res.push("copy".to_string());
+    }
+    if abilities.has_drop() {
+        res.push("drop".to_string());
+    }
+    if abilities.has_store() {
+        res.push("store".to_string());
+    }
+    if abilities.has_key() {
+        res.push("key".to_string());
+    }
+    res
+}

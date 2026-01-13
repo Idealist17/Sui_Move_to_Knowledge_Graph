@@ -14,6 +14,12 @@ pub struct Args {
 
     #[clap(short = 'i', long, help = "IR type")]
     pub ir_type: Option<IR>,
+
+    #[clap(short = 's', long = "source", help = "Path to source dir")]
+    pub source: Option<String>,
+
+    #[clap(long = "skip-build", help = "Skip build")]
+    pub skip_build: bool,
 }
 
 #[derive(Parser)]

@@ -14,11 +14,11 @@ pub struct Packages<'a> {
 }
 
 impl<'a> Packages<'a> {
-    pub fn new(cms: &'a Vec<CompiledModule>) -> Self {
+    pub fn new(cms: &'a Vec<(PathBuf, CompiledModule)>) -> Self {
         // 根据cms构建StacklessBytecodeGenerator，并进行IR转换、cfg构建、call_gragh构建、data_dependency分析
         let mut stbgrs = Vec::new();
-        for cm in cms.iter() {
-            let mut stbgr = StacklessBytecodeGenerator::new(&cm);
+        for (path, cm) in cms.iter() {
+            let mut stbgr = StacklessBytecodeGenerator::new(cm, path);
             stbgr.generate_function();
             stbgr.get_control_flow_graph();
             stbgr.build_call_graph();
@@ -68,16 +68,16 @@ pub fn compile_module(filename: PathBuf) -> Option<CompiledModule> {
     cm.ok()
 }
 
-pub fn build_compiled_modules(bytecode_path: &PathBuf) -> Vec<CompiledModule> {
+pub fn build_compiled_modules(bytecode_path: &PathBuf) -> Vec<(PathBuf, CompiledModule)> {
     // 输入路径遍历
     let mut paths = Vec::new();
-    utils::visit_dirs(&bytecode_path, &mut paths, false);
+    utils::visit_dirs(&bytecode_path, &mut paths, true);
     // 输入文件解析(反序列化成CompiledModule)
     let mut cms = Vec::new();
     for filename in paths {
         // println!("Deserializing {:?}...", filename);
         if let Some(cm) = compile_module(filename.clone()) {
-            cms.push(cm);
+            cms.push((filename, cm));
         } else {
             println!("\x1B[31mFail to deserialize {:?}, Skip.\x1B[0m", filename);
         }
