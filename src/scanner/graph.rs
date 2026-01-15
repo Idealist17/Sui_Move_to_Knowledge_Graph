@@ -47,4 +47,7 @@ pub struct StructNode {
 pub enum EdgeWrapper {
     Defines { from: String, to: String }, // Module defines Function/Struct
     Calls { from: String, to: String },   // Function calls Function
+    Packs { from: String, to: String },   // Function packs Struct
+    Unpacks { from: String, to: String }, // Function unpacks Struct
+    Acquires { from: String, to: String }, // Function acquires/moves Struct
 }

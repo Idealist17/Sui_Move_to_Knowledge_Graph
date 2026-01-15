@@ -2,7 +2,8 @@ use crate::move_ir::packages::Packages;
 use crate::move_ir::generate_bytecode::StacklessBytecodeGenerator;
 use crate::scanner::graph::{GraphOutput, NodeWrapper, ModuleNode, FunctionNode, StructNode, EdgeWrapper};
 use move_binary_format::access::ModuleAccess;
-use move_model::model::{FunId, ModuleId, QualifiedId};
+use move_model::model::{FunId, ModuleId, QualifiedId, StructId};
+use move_stackless_bytecode::stackless_bytecode::{Bytecode, Operation};
 
 
 pub struct GraphExporter;
@@ -127,6 +128,39 @@ impl GraphExporter {
                     from: mod_id_str.clone(),
                     to: full_func_id.clone(),
                 });
+
+                // 3.1 Extract internal body relationships (Packs, Unpacks, Acquires)
+                for code in &function.code {
+                    if let Bytecode::Call(_, _, operation, _, _) = code {
+                        match operation {
+                            Operation::Pack(mid, sid, _) => {
+                                let target = resolve_struct(stbgr, *mid, *sid);
+                                edges.push(EdgeWrapper::Packs {
+                                    from: full_func_id.clone(),
+                                    to: target,
+                                });
+                            }
+                            Operation::Unpack(mid, sid, _) => {
+                                let target = resolve_struct(stbgr, *mid, *sid);
+                                edges.push(EdgeWrapper::Unpacks {
+                                    from: full_func_id.clone(),
+                                    to: target,
+                                });
+                            }
+                            Operation::MoveTo(mid, sid, _) | 
+                            Operation::MoveFrom(mid, sid, _) |
+                            Operation::BorrowGlobal(mid, sid, _) |
+                            Operation::Exists(mid, sid, _) => {
+                                let target = resolve_struct(stbgr, *mid, *sid);
+                                edges.push(EdgeWrapper::Acquires {
+                                    from: full_func_id.clone(),
+                                    to: target,
+                                });
+                            }
+                            _ => {}
+                        }
+                    }
+                }
             }
 
             // 4. Extract Calls from Graph
@@ -156,6 +190,13 @@ fn resolve_qid(stbgr: &StacklessBytecodeGenerator, qid: &QualifiedId<FunId>) -> 
     let m_str = module_name.display(&stbgr.symbol_pool).to_string();
     let f_str = stbgr.symbol_pool.string(qid.id.symbol()).to_string();
     format!("{}::{}", m_str, f_str)
+}
+
+fn resolve_struct(stbgr: &StacklessBytecodeGenerator, mid: ModuleId, sid: StructId) -> String {
+    let module_name = &stbgr.module_names[mid.to_usize()];
+    let m_str = module_name.display(&stbgr.symbol_pool).to_string();
+    let s_str = stbgr.symbol_pool.string(sid.symbol()).to_string();
+    format!("{}::{}", m_str, s_str)
 }
 
 fn extract_definition(source: &str, kind: &str, name: &str) -> String {
